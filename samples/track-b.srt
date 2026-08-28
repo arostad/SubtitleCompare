@@ -1,0 +1,36 @@
+1
+00:00:01,000 --> 00:00:03,500
+Hello there.
+How are you doing?
+
+2
+00:00:04,000 --> 00:00:06,000
+I am doing fine.
+
+3
+00:00:07,200 --> 00:00:09,000
+What a lovely day.
+
+4
+00:00:13,000 --> 00:00:15,000
+The park is nearby.
+
+5
+00:00:15,200 --> 00:00:15,800
+Just around the corner.
+
+6
+00:00:16,000 --> 00:00:18,000
+I would like that.
+
+7
+00:00:19,000 --> 00:00:21,000
+Let me get my jacket.
+
+8
+00:00:22,500 --> 00:00:24,500
+After you, please.
+
+9
+00:00:30,000 --> 00:00:32,000
+Wait for me!

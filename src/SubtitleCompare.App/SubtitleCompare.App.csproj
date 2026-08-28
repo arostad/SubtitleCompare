@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SubtitleCompare</AssemblyName>
+    <RootNamespace>SubtitleCompare.App</RootNamespace>
+    <ApplicationTitle>Subtitle Compare</ApplicationTitle>
+    <LangVersion>latest</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Version>1.0.02</Version>
+    <InformationalVersion>1.0.02</InformationalVersion>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
+    <FileVersion>1.0.2.0</FileVersion>
+    <Authors>Andy Rostad</Authors>
+    <Company>Andy Rostad</Company>
+    <Copyright>Copyright © 2026 Andy Rostad. All rights reserved.</Copyright>
+    <Description>MKV subtitle comparison tool</Description>
+    <Product>Subtitle Compare</Product>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SubtitleCompare.Core\SubtitleCompare.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\app.png" />
+  </ItemGroup>
+</Project>
