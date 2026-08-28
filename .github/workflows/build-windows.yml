@@ -28,11 +28,19 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -o ./publish
 
+      - name: Write version.txt
+        shell: pwsh
+        run: |
+          $v = (Select-Xml -Path src/SubtitleCompare.App/SubtitleCompare.App.csproj -XPath "//Version").Node.InnerText
+          Set-Content -Path publish/version.txt -Value $v.Trim() -NoNewline
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: SubtitleCompare
-          path: publish/SubtitleCompare.exe
+          path: |
+            publish/SubtitleCompare.exe
+            publish/version.txt
 
       - name: Update Latest release
         uses: softprops/action-gh-release@v2
@@ -43,5 +51,7 @@ jobs:
             Self-contained Windows build of Subtitle Compare.
             Download `SubtitleCompare.exe` and keep ffmpeg on PATH.
             This file is replaced on every push to main.
-          files: publish/SubtitleCompare.exe
+          files: |
+            publish/SubtitleCompare.exe
+            publish/version.txt
           make_latest: true

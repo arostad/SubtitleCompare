@@ -20,7 +20,7 @@
                    HorizontalAlignment="Center"
                    Foreground="{DynamicResource EqualFg}"/>
         <TextBlock x:Name="VersionText"
-                   Text="Version 1.0.02"
+                   Text="Version 1.0.03"
                    FontSize="13"
                    HorizontalAlignment="Center"
                    Margin="0,6,0,0"
@@ -31,6 +31,16 @@
                    TextWrapping="Wrap"
                    HorizontalAlignment="Center"
                    Margin="8,14,8,0"
+                   Foreground="{DynamicResource MutedFg}"/>
+        <Button x:Name="CheckUpdatesButton" Content="Check for updates"
+                Margin="0,18,0,0" HorizontalAlignment="Center"
+                Click="OnCheckUpdatesClick"/>
+        <TextBlock x:Name="UpdateStatus"
+                   FontSize="12"
+                   TextAlignment="Center"
+                   TextWrapping="Wrap"
+                   HorizontalAlignment="Center"
+                   Margin="0,8,0,0"
                    Foreground="{DynamicResource MutedFg}"/>
         <TextBlock HorizontalAlignment="Center" Margin="0,18,0,0" FontSize="13"
                    Foreground="{DynamicResource MutedFg}">

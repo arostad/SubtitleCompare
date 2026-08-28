@@ -46,6 +46,7 @@ public partial class MainWindow : Window
             box.DisplayMemberPath = nameof(TrackChoice.Label);
 
         Theme.Changed += OnThemeChanged;
+        Loaded += (_, _) => _ = CheckForUpdatesOnLaunchAsync();
 
         var args = Environment.GetCommandLineArgs();
         if (args.Length > 1 && File.Exists(args[1]) && IsSupportedMedia(args[1]))
@@ -104,6 +105,55 @@ public partial class MainWindow : Window
     {
         var about = new AboutWindow { Owner = this };
         about.ShowDialog();
+        _ = CheckForUpdatesOnLaunchAsync(forceBanner: about.UpdateWasInstalled);
+    }
+
+    private async Task CheckForUpdatesOnLaunchAsync(bool forceBanner = false)
+    {
+        UpdateInfo info;
+        try
+        {
+            info = await Task.Run(UpdateChecker.Check).ConfigureAwait(true);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (!info.IsNewer)
+            return;
+
+        UpdateBannerText.Text = $"Version {info.RemoteVersion} is available (you have {AppVersion.Current}).";
+        UpdateBanner.Visibility = Visibility.Visible;
+        UpdateNowButton.IsEnabled = true;
+        UpdateNowButton.Content = "Update";
+        if (forceBanner)
+            UpdateBanner.BringIntoView();
+    }
+
+    private async void OnUpdateNowClick(object sender, RoutedEventArgs e)
+    {
+        UpdateNowButton.IsEnabled = false;
+        UpdateNowButton.Content = "Updating…";
+        UpdateLaterButton.IsEnabled = false;
+        UpdateBannerText.Text = "Downloading the new version. The app will restart when it is ready.";
+        try
+        {
+            await Task.Run(UpdateChecker.DownloadAndRestart).ConfigureAwait(true);
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            UpdateBannerText.Text = ex.Message;
+            UpdateNowButton.IsEnabled = true;
+            UpdateNowButton.Content = "Update";
+            UpdateLaterButton.IsEnabled = true;
+        }
+    }
+
+    private void OnUpdateLaterClick(object sender, RoutedEventArgs e)
+    {
+        UpdateBanner.Visibility = Visibility.Collapsed;
     }
 
     private void OnOpenClick(object sender, RoutedEventArgs e)

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Navigation;
 
@@ -7,10 +6,12 @@ namespace SubtitleCompare.App;
 
 public partial class AboutWindow : Window
 {
+    public bool UpdateWasInstalled { get; private set; }
+
     public AboutWindow()
     {
         InitializeComponent();
-        VersionText.Text = $"Version {GetVersion()}";
+        VersionText.Text = $"Version {AppVersion.Current}";
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e) => Theme.ApplyCaption(this);
@@ -21,18 +22,54 @@ public partial class AboutWindow : Window
         e.Handled = true;
     }
 
-    private static string GetVersion()
+    private async void OnCheckUpdatesClick(object sender, RoutedEventArgs e)
     {
-        var info = Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-        if (!string.IsNullOrWhiteSpace(info))
+        CheckUpdatesButton.IsEnabled = false;
+        UpdateStatus.Text = "Checking…";
+        try
         {
-            var plus = info.IndexOf('+');
-            return plus >= 0 ? info[..plus] : info;
-        }
+            var info = await Task.Run(UpdateChecker.Check).ConfigureAwait(true);
+            if (info.Error is not null && !info.IsNewer)
+            {
+                UpdateStatus.Text = info.Error;
+                return;
+            }
 
-        var v = Assembly.GetExecutingAssembly().GetName().Version;
-        return v is null ? "1.0.02" : $"{v.Major}.{v.Minor}.{v.Build:00}";
+            if (!info.IsNewer)
+            {
+                UpdateStatus.Text = $"You're on the latest version ({AppVersion.Current}).";
+                return;
+            }
+
+            UpdateStatus.Text = $"Version {info.RemoteVersion} is available.";
+            CheckUpdatesButton.Content = "Update now";
+            CheckUpdatesButton.Click -= OnCheckUpdatesClick;
+            CheckUpdatesButton.Click += OnUpdateNowClick;
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = ex.Message;
+        }
+        finally
+        {
+            CheckUpdatesButton.IsEnabled = true;
+        }
+    }
+
+    private async void OnUpdateNowClick(object sender, RoutedEventArgs e)
+    {
+        CheckUpdatesButton.IsEnabled = false;
+        UpdateStatus.Text = "Downloading. The app will restart when it is ready.";
+        try
+        {
+            await Task.Run(UpdateChecker.DownloadAndRestart).ConfigureAwait(true);
+            UpdateWasInstalled = true;
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = ex.Message;
+            CheckUpdatesButton.IsEnabled = true;
+        }
     }
 }

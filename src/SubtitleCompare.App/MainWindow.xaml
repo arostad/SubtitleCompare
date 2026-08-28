@@ -26,6 +26,27 @@
                        FontSize="13"/>
         </Border>
 
+        <Border x:Name="UpdateBanner"
+                DockPanel.Dock="Top"
+                Background="{DynamicResource BannerBg}"
+                BorderBrush="{DynamicResource BannerBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="10,7"
+                Visibility="Collapsed">
+            <DockPanel>
+                <Button x:Name="UpdateNowButton" Content="Update" Click="OnUpdateNowClick"
+                        DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                <Button x:Name="UpdateLaterButton" Content="Later" Click="OnUpdateLaterClick"
+                        DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                <TextBlock x:Name="UpdateBannerText"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource BannerFg}"
+                           FontSize="13"
+                           Text="A new version is available."/>
+            </DockPanel>
+        </Border>
+
         <Border DockPanel.Dock="Top" Padding="10,8"
                 Background="{DynamicResource ChromeBg}"
                 BorderBrush="{DynamicResource BorderBrush}"
