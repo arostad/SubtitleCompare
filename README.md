@@ -1,32 +1,34 @@
 # Subtitle Compare
 
-MKV subtitle comparison tool. Drop an MKV on the window, pick up to three subtitle tracks, and compare them side by side (timestamps line up, wording diffs highlight).
+MKV subtitle comparison tool. Drop an MKV on the window, pick up to three subtitle tracks, and compare them side by side.
 
-GitHub Actions builds the Windows exe. The repo is private, so downloads go through your GitHub login (`gh`), not an anonymous link.
+The repo is private. GitHub Actions builds the exe. You install it with GitHub CLI (`gh`) so the download stays authenticated.
 
 ## Install
 
-Once, in PowerShell (new window after installing `gh`):
+Once:
 
 ```
 winget install --id GitHub.cli -e
+```
+
+Close PowerShell, open a new window, then:
+
+```
 gh auth login
 ```
 
-Then, whenever you want the latest exe:
+Then run the installer (saves it to a file first, then runs it):
 
 ```
-gh release download latest -R arostad/subtitle-compare -p SubtitleCompare.exe --clobber -D $env:LOCALAPPDATA\SubtitleCompare
+gh api -H "Accept: application/vnd.github.raw" repos/arostad/subtitle-compare/contents/scripts/Install-SubtitleCompare.ps1 | Set-Content -Encoding utf8 $env:TEMP\Install-SubtitleCompare.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File $env:TEMP\Install-SubtitleCompare.ps1
 ```
 
-Open `%LOCALAPPDATA%\SubtitleCompare\SubtitleCompare.exe`. After 1.0.03, the app can also offer Update when a newer release is up.
+That puts the exe in `%LOCALAPPDATA%\SubtitleCompare` and creates Desktop and Start Menu shortcuts. Later versions: use Update in the app.
 
-You also need ffmpeg:
-
-```
-winget install Gyan.FFmpeg
-```
+You need ffmpeg on PATH (`winget install Gyan.FFmpeg` if you do not already have it).
 
 ## Use
 
-Drop an `.mkv` (or use Open…). Each pane has a dropdown for a subtitle track. Image tracks (PGS, VobSub, DVB) are listed but cannot be compared as text. F7 / F8 jump to the previous / next difference.
+Drop an `.mkv` (or Open…). Each pane picks a subtitle track. Image tracks (PGS, VobSub, DVB) cannot be compared as text. F7 / F8 jump differences.
