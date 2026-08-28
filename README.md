@@ -2,13 +2,25 @@
 
 MKV subtitle comparison tool.
 
-## Download (Windows)
+## Install on Windows (auto-updates)
 
-The latest exe is built automatically:
+One-time setup on the Windows PC, in PowerShell:
 
-https://github.com/arostad/subtitle-compare/releases/latest
+```
+winget install --id GitHub.cli -e
+gh auth login
+gh api -H "Accept: application/vnd.github.raw" repos/arostad/subtitle-compare/contents/scripts/Install-SubtitleCompare.ps1 | powershell -NoProfile -ExecutionPolicy Bypass -
+```
 
-Download `SubtitleCompare.exe`. You still need `ffmpeg` on PATH (`winget install Gyan.FFmpeg`).
+That puts `SubtitleCompare.exe` in `%LOCALAPPDATA%\SubtitleCompare`, adds Start Menu + Desktop shortcuts, and registers a sign-in task that pulls a new exe whenever GitHub publishes one.
+
+You still need ffmpeg:
+
+```
+winget install Gyan.FFmpeg
+```
+
+Manual download: https://github.com/arostad/subtitle-compare/releases/latest
 
 A small Windows WPF app that lines up subtitle tracks from one MKV so you can compare wording the way Beyond Compare lines up files.
 
