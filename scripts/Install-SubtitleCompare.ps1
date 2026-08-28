@@ -1,4 +1,5 @@
 # One-time install: download the exe, Start Menu shortcut, auto-update at logon.
+# Works when saved as a file or piped into powershell.
 $ErrorActionPreference = "Stop"
 $Repo = "arostad/subtitle-compare"
 $InstallDir = Join-Path $env:LOCALAPPDATA "SubtitleCompare"
@@ -27,17 +28,29 @@ if ($LASTEXITCODE -ne 0) {
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
-# Copy updater next to the exe (from this script's folder, or fetch from the repo).
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$srcUpdate = Join-Path $here "Update-SubtitleCompare.ps1"
-if (Test-Path $srcUpdate) {
+$scriptPath = $MyInvocation.MyCommand.Path
+$srcUpdate = $null
+if ($scriptPath) {
+    $srcUpdate = Join-Path (Split-Path -Parent $scriptPath) "Update-SubtitleCompare.ps1"
+}
+
+if ($srcUpdate -and (Test-Path $srcUpdate)) {
     Copy-Item -Force $srcUpdate $UpdateScript
 } else {
+    Write-Host "Fetching updater from GitHub..."
     gh api -H "Accept: application/vnd.github.raw" "repos/$Repo/contents/scripts/Update-SubtitleCompare.ps1" |
         Set-Content -Path $UpdateScript -Encoding UTF8
 }
 
+if (-not (Test-Path $UpdateScript)) {
+    throw "Could not install Update-SubtitleCompare.ps1"
+}
+
 & $UpdateScript
+
+if (-not (Test-Path $ExePath)) {
+    throw "Download finished but SubtitleCompare.exe is missing from $InstallDir"
+}
 
 $Wsh = New-Object -ComObject WScript.Shell
 $startDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
