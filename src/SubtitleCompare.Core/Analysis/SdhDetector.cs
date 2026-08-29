@@ -55,7 +55,7 @@ public static class SdhDetector
             && SdhTitleHint.IsMatch(track.Title);
 
         if (fromFlag || fromTitle)
-            return Labeled("SDH subtitle", fromTitle, fromFlag);
+            return Labeled("SDH subtitle track", fromTitle, fromFlag);
 
         var list = cues ?? Array.Empty<SubtitleCue>();
         if (list.Count == 0)
@@ -73,7 +73,7 @@ public static class SdhDetector
         if (!likely)
             return new(false, KindSource.None, "");
 
-        return new(true, KindSource.Heuristic, "Potential SDH subtitle detected");
+        return new(true, KindSource.Heuristic, "Potential SDH subtitle track detected");
     }
 
     public static KindAssessment EvaluateForced(SubtitleTrackInfo? track)
@@ -84,7 +84,7 @@ public static class SdhDetector
             && ForcedTitleHint.IsMatch(track.Title);
 
         if (fromFlag || fromTitle)
-            return Labeled("Forced subtitle", fromTitle, fromFlag);
+            return Labeled("Forced subtitle track", fromTitle, fromFlag);
 
         return new(false, KindSource.None, "");
     }
