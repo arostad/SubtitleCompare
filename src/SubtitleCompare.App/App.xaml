@@ -306,7 +306,7 @@
             <Setter Property="Foreground" Value="{DynamicResource EqualFg}"/>
         </Style>
 
-        <!-- Casual curved up-arrow + caption for empty (none) panes after a file is open. -->
+        <!-- Whiteboard callout arrow + caption for empty (none) panes after a file is open. -->
         <Style x:Key="PickTrackHint" TargetType="ContentControl">
             <Setter Property="Visibility" Value="Collapsed"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
@@ -322,10 +322,16 @@
                                      HorizontalAlignment="Center"
                                      Margin="0,0,0,10"
                                      Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource PickTrackHintWidth}}">
-                                <Path Width="48"
-                                      Height="56"
-                                      Fill="{DynamicResource MutedFg}"
-                                      Data="M 8,54 C 10,34 14,20 26,16 L 16,24 L 32,3 L 48,24 L 32,16 C 12,16 6,32 4,54 Z"/>
+                                <Canvas Width="48" Height="56">
+                                    <Path Stroke="{DynamicResource MutedFg}"
+                                          StrokeThickness="3.2"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Data="M 10,51 C 7,34 24,23 24,15"/>
+                                    <Path Fill="{DynamicResource MutedFg}"
+                                          Data="M 24,3 L 16.5,15.2 L 31.5,15.2 Z"/>
+                                </Canvas>
                             </Viewbox>
                             <TextBlock Text="Select a subtitle track above"
                                        Foreground="{DynamicResource MutedFg}"
