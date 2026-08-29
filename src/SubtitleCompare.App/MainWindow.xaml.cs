@@ -435,7 +435,7 @@ public partial class MainWindow : Window
 
         var ui = new Progress<OcrProgress>(p =>
         {
-            if (gen != _loadGeneration || refresh != _refreshGeneration)
+            if (gen != _loadGeneration || refresh != _refreshGeneration || !_ocrActive[pane])
                 return;
             _paneOcr[pane] = p;
             if (p.Total > 0)
