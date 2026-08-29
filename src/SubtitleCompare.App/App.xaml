@@ -1,12 +1,9 @@
 <Application x:Class="SubtitleCompare.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:SubtitleCompare.App"
              StartupUri="MainWindow.xaml"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
-        <local:PickTrackHintWidthConverter x:Key="PickTrackHintWidth"/>
-
         <SolidColorBrush x:Key="AppBg" Color="#F4F5F7"/>
         <SolidColorBrush x:Key="PanelBg" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="ChromeBg" Color="#ECEFF3"/>
@@ -304,46 +301,6 @@
         <Style TargetType="StatusBar">
             <Setter Property="Background" Value="{DynamicResource StatusBg}"/>
             <Setter Property="Foreground" Value="{DynamicResource EqualFg}"/>
-        </Style>
-
-        <!-- Whiteboard callout arrow + caption for empty (none) panes after a file is open. -->
-        <Style x:Key="PickTrackHint" TargetType="ContentControl">
-            <Setter Property="Visibility" Value="Collapsed"/>
-            <Setter Property="IsHitTestVisible" Value="False"/>
-            <Setter Property="Focusable" Value="False"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="VerticalAlignment" Value="Top"/>
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ContentControl">
-                        <StackPanel HorizontalAlignment="Center" Margin="16,32,16,16">
-                            <Viewbox Stretch="Uniform"
-                                     HorizontalAlignment="Center"
-                                     Margin="0,0,0,10"
-                                     Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource PickTrackHintWidth}}">
-                                <Canvas Width="48" Height="56">
-                                    <Path Stroke="{DynamicResource MutedFg}"
-                                          StrokeThickness="3.2"
-                                          StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round"
-                                          StrokeLineJoin="Round"
-                                          Data="M 10,51 C 7,34 24,23 24,15"/>
-                                    <Path Fill="{DynamicResource MutedFg}"
-                                          Data="M 24,3 L 16.5,15.2 L 31.5,15.2 Z"/>
-                                </Canvas>
-                            </Viewbox>
-                            <TextBlock Text="Select a subtitle track above"
-                                       Foreground="{DynamicResource MutedFg}"
-                                       FontSize="13"
-                                       TextWrapping="Wrap"
-                                       TextAlignment="Center"
-                                       HorizontalAlignment="Center"
-                                       MaxWidth="200"/>
-                        </StackPanel>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
     </Application.Resources>
 </Application>

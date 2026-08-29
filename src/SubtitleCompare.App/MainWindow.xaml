@@ -196,12 +196,6 @@
                                 <ColumnDefinition Width="8"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <ContentControl x:Name="PickHintA" Grid.Column="0"
-                                            Style="{StaticResource PickTrackHint}"/>
-                            <ContentControl x:Name="PickHintB" Grid.Column="2"
-                                            Style="{StaticResource PickTrackHint}"/>
-                            <ContentControl x:Name="PickHintC" Grid.Column="4"
-                                            Style="{StaticResource PickTrackHint}"/>
                             <Border x:Name="OverlayA" Grid.Column="0" Visibility="Collapsed"
                                     Background="{DynamicResource OverlayBg}" Margin="4">
                                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16" MaxWidth="280">
