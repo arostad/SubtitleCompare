@@ -14,6 +14,7 @@ using SubtitleCompare.Core.Ffmpeg;
 using SubtitleCompare.Core.Models;
 using SubtitleCompare.Core.Ocr;
 using SubtitleCompare.Core.Parsing;
+using SubtitleCompare.Core.Ui;
 
 namespace SubtitleCompare.App;
 
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _refreshCts;
     private bool _suppressSlotEvents;
     private readonly bool[] _ocrActive = new bool[3];
+    private readonly bool[] _extracting = new bool[3];
     private readonly OcrProgress?[] _paneOcr = new OcrProgress?[3];
 
     public MainWindow()
@@ -364,12 +366,13 @@ public partial class MainWindow : Window
             _parsed[pane] = null;
 
         _ocrActive[pane] = false;
+        _extracting[pane] = false;
         _paneOcr[pane] = null;
 
         if (choice is null || choice.IsNone)
         {
             SetOverlay(pane, null);
-            UpdateSharedOcrStatus();
+            UpdateSharedBusyStatus();
             return;
         }
 
@@ -378,7 +381,7 @@ public partial class MainWindow : Window
             if (choice.Track?.IsPgs != true)
             {
                 SetOverlay(pane, "This image subtitle format can't be OCR'd yet (PGS is supported).");
-                UpdateSharedOcrStatus();
+                UpdateSharedBusyStatus();
                 return;
             }
 
@@ -386,9 +389,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        UpdateSharedOcrStatus();
+        _extracting[pane] = true;
         SetOverlay(pane, "Extracting…");
-        Dispatcher.Invoke(() => StatusExtract.Text = "Extracting…");
+        UpdateSharedBusyStatus();
 
         var file = _currentFile!;
         var index = choice.Track!.Index;
@@ -402,7 +405,6 @@ public partial class MainWindow : Window
             if (gen != _loadGeneration || refresh != _refreshGeneration) return;
             _parsed[pane] = parsed;
             SetOverlay(pane, parsed.Cues.Count == 0 ? "This track has no cues." : null);
-            Dispatcher.Invoke(() => SetStatusExtract("Ready"));
         }
         catch (FfmpegNotFoundException ex)
         {
@@ -426,6 +428,14 @@ public partial class MainWindow : Window
                 SetStatusError(ex.Message);
             });
         }
+        finally
+        {
+            if (gen == _loadGeneration && refresh == _refreshGeneration)
+            {
+                _extracting[pane] = false;
+                UpdateSharedBusyStatus();
+            }
+        }
     }
 
     private async Task LoadImagePaneAsync(
@@ -441,14 +451,14 @@ public partial class MainWindow : Window
         if (loader is null)
         {
             SetOverlay(pane, "OCR is not available in this session.");
-            UpdateSharedOcrStatus();
+            UpdateSharedBusyStatus();
             return;
         }
 
         _ocrActive[pane] = true;
         _paneOcr[pane] = new OcrProgress(0, 0, "Starting OCR…");
         SetOverlay(pane, "Starting OCR…", busy: true);
-        UpdateSharedOcrStatus(pane);
+        UpdateSharedBusyStatus();
 
         var ui = new Progress<OcrProgress>(p =>
         {
@@ -459,7 +469,7 @@ public partial class MainWindow : Window
                 SetOverlay(pane, p.Message, fraction: (double)p.Current / p.Total);
             else
                 SetOverlay(pane, p.Message, busy: true);
-            UpdateSharedOcrStatus(pane);
+            UpdateSharedBusyStatus();
         });
         var progress = new ThrottledProgress<OcrProgress>(
             ui,
@@ -587,8 +597,11 @@ public partial class MainWindow : Window
 
         if (!active[0] && !active[1] && !active[2])
         {
+            _rows = Array.Empty<AlignedRow>();
             PrevDiffButton.IsEnabled = false;
             NextDiffButton.IsEnabled = false;
+            if (!AnyBusy())
+                SetIdleStatusText();
             return;
         }
 
@@ -659,7 +672,8 @@ public partial class MainWindow : Window
         var diffsCount = _rowIsDiff.Count(x => x);
         PrevDiffButton.IsEnabled = diffsCount > 0;
         NextDiffButton.IsEnabled = diffsCount > 0;
-        StatusExtract.Text = $"{_rows.Count} aligned row{(_rows.Count == 1 ? "" : "s")}, {diffsCount} difference{(diffsCount == 1 ? "" : "s")}";
+        if (!AnyBusy())
+            SetIdleStatusText();
     }
 
     private Border BuildCell(
@@ -894,48 +908,56 @@ public partial class MainWindow : Window
     {
         _ocrActive[pane] = false;
         _paneOcr[pane] = null;
-        UpdateSharedOcrStatus();
+        UpdateSharedBusyStatus();
     }
 
-    private void UpdateSharedOcrStatus(int? preferPane = null)
+    private void UpdateSharedBusyStatus()
     {
-        if (!AnyOcrActive())
+        Dispatcher.Invoke(() =>
         {
-            HideStatusOcrChrome();
-            if (StatusExtract.Text == "Working…")
-                StatusExtract.Text = "Ready";
-            return;
-        }
-
-        StatusExtract.Text = "Working…";
-
-        OcrProgress? recognize = null;
-        if (preferPane is int pane && _ocrActive[pane] && _paneOcr[pane] is { Total: > 0 } preferred)
-            recognize = preferred;
-        else
-        {
-            for (var i = 0; i < 3; i++)
+            var busy = CollectBusyPanes();
+            if (busy.Count == 0)
             {
-                if (_ocrActive[i] && _paneOcr[i] is { Total: > 0 } p)
-                    recognize = p;
+                HideStatusOcrChrome();
+                return;
             }
-        }
 
-        if (recognize is { } r)
-        {
-            StatusOcrText.Text = r.Message;
+            StatusOcrText.Text = BusyStatus.Format(busy);
             StatusOcrTextItem.Visibility = Visibility.Visible;
-            ApplyProgress(StatusOcrBar, (double)r.Current / r.Total, busy: false);
-        }
-        else
+            if (BusyStatus.CombinedFraction(busy) is double fraction)
+                ApplyProgress(StatusOcrBar, fraction, busy: false);
+            else
+                ApplyProgress(StatusOcrBar, null, busy: true);
+
+            StatusOcrItem.Visibility = Visibility.Visible;
+            StatusOcrSep.Visibility = Visibility.Visible;
+        });
+    }
+
+    private List<BusyPane> CollectBusyPanes()
+    {
+        var busy = new List<BusyPane>(3);
+        for (var i = 0; i < 3; i++)
         {
-            StatusOcrText.Text = "";
-            StatusOcrTextItem.Visibility = Visibility.Collapsed;
-            ApplyProgress(StatusOcrBar, null, busy: true);
+            if (_extracting[i])
+            {
+                busy.Add(new BusyPane(i, BusyKind.Extracting));
+                continue;
+            }
+
+            if (!_ocrActive[i])
+                continue;
+
+            if (_paneOcr[i] is { } ocr)
+            {
+                var kind = BusyStatus.Classify(ocr.Current, ocr.Total, ocr.Message);
+                busy.Add(new BusyPane(i, kind, ocr.Current, ocr.Total));
+            }
+            else
+                busy.Add(new BusyPane(i, BusyKind.Ocr));
         }
 
-        StatusOcrItem.Visibility = Visibility.Visible;
-        StatusOcrSep.Visibility = Visibility.Visible;
+        return busy;
     }
 
     private void HideStatusOcrChrome()
@@ -948,11 +970,25 @@ public partial class MainWindow : Window
         StatusOcrSep.Visibility = Visibility.Collapsed;
     }
 
-    private void SetStatusExtract(string text)
+    private void SetIdleStatusText()
     {
-        if (text == "Ready" && AnyOcrActive())
+        if (AnyBusy())
             return;
-        StatusExtract.Text = text;
+        StatusExtract.Text = IdleStatusText();
+    }
+
+    private string IdleStatusText()
+    {
+        if (_rows.Count > 0)
+        {
+            var diffsCount = _rowIsDiff.Count(x => x);
+            return $"{_rows.Count} aligned row{(_rows.Count == 1 ? "" : "s")}, {diffsCount} difference{(diffsCount == 1 ? "" : "s")}";
+        }
+
+        if (_tracks.Count > 0)
+            return $"{_tracks.Count} subtitle track{(_tracks.Count == 1 ? "" : "s")}";
+
+        return "Ready";
     }
 
     private void SetStatusError(string? text)
@@ -963,11 +999,14 @@ public partial class MainWindow : Window
             : Visibility.Visible;
     }
 
-    private bool AnyOcrActive() => _ocrActive[0] || _ocrActive[1] || _ocrActive[2];
+    private bool AnyBusy() =>
+        _extracting[0] || _extracting[1] || _extracting[2]
+        || _ocrActive[0] || _ocrActive[1] || _ocrActive[2];
 
     private void HideOverlays()
     {
         Array.Clear(_ocrActive);
+        Array.Clear(_extracting);
         Array.Clear(_paneOcr);
         foreach (var o in _overlays)
             o.Visibility = Visibility.Collapsed;
@@ -1003,6 +1042,7 @@ public partial class MainWindow : Window
     {
         _refreshCts?.Cancel();
         Array.Clear(_ocrActive);
+        Array.Clear(_extracting);
         Array.Clear(_paneOcr);
         _ocr = null;
         _extractor = null;
