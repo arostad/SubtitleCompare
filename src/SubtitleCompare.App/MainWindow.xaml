@@ -89,13 +89,13 @@
         </Border>
 
         <StatusBar DockPanel.Dock="Bottom" Padding="8,3">
-            <StatusBarItem>
-                <TextBlock x:Name="StatusExtract" Text="Ready" Foreground="{DynamicResource MutedFg}"/>
+            <StatusBarItem MinWidth="220">
+                <TextBlock x:Name="StatusExtract" Text="Ready" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedFg}"/>
             </StatusBarItem>
             <Separator x:Name="StatusOcrSep" Visibility="Collapsed"/>
-            <StatusBarItem x:Name="StatusOcrTextItem" Visibility="Collapsed" Width="200">
+            <StatusBarItem x:Name="StatusOcrTextItem" Visibility="Collapsed" Width="240">
                 <TextBlock x:Name="StatusOcrText"
-                           FontFamily="Consolas, Cascadia Mono, Courier New"
+                           TextTrimming="CharacterEllipsis"
                            Foreground="{DynamicResource MutedFg}"/>
             </StatusBarItem>
             <StatusBarItem x:Name="StatusOcrItem" Visibility="Collapsed" Width="140">
