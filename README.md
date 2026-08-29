@@ -30,7 +30,7 @@ Vibe coded by [Andy Rostad](https://github.com/arostad). Released under the [MIT
 winget install Gyan.FFmpeg
 ```
 
-Then open a new PowerShell window or restart the app.
+The app also pops a dialog if FFmpeg is missing, with an Install FFmpeg button (opens a visible winget console) and a copyable command. Then open a new PowerShell window or restart the app if PATH did not refresh.
 
 ## Fresh Windows install
 

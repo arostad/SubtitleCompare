@@ -49,7 +49,7 @@ public partial class MainWindow : Window
             box.DisplayMemberPath = nameof(TrackChoice.Label);
 
         Theme.Changed += OnThemeChanged;
-        Loaded += (_, _) => _ = CheckForUpdatesOnLaunchAsync();
+        Loaded += OnWindowLoaded;
 
         var args = Environment.GetCommandLineArgs();
         if (args.Length > 1 && File.Exists(args[1]) && IsSupportedMedia(args[1]))
@@ -57,6 +57,28 @@ public partial class MainWindow : Window
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e) => Theme.ApplyCaption(this);
+
+    private void OnWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_currentFile is null && !FfmpegLocator.IsAvailable())
+            OfferFfmpegIfMissing();
+        _ = CheckForUpdatesOnLaunchAsync();
+    }
+
+    private void OfferFfmpegIfMissing()
+    {
+        var dlg = new FfmpegMissingWindow { Owner = this };
+        dlg.ShowDialog();
+        if (dlg.Installed)
+        {
+            SetBanner(null);
+            StatusError.Text = "";
+            StatusExtract.Text = "Ready";
+            return;
+        }
+
+        SetBanner("FFmpeg is required to read subtitle tracks. Use Install FFmpeg, or copy the winget command.");
+    }
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
@@ -195,13 +217,15 @@ public partial class MainWindow : Window
         {
             tracks = await Task.Run(() => _probe.Probe(path)).ConfigureAwait(true);
         }
-        catch (FfmpegNotFoundException ex)
+        catch (FfmpegNotFoundException)
         {
             if (gen != _loadGeneration) return;
-            SetBanner(ex.Message);
             StatusExtract.Text = "ffprobe not found";
-            StatusError.Text = ex.Message;
+            StatusError.Text = "";
             ShowEmptyAfterFailure();
+            OfferFfmpegIfMissing();
+            if (FfmpegLocator.IsAvailable() && gen == _loadGeneration)
+                await LoadFileAsync(path);
             return;
         }
         catch (Exception ex)
