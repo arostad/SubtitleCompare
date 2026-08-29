@@ -4,7 +4,7 @@ namespace SubtitleCompare.App;
 
 internal static class AppVersion
 {
-    public const string Repo = "arostad/subtitle-compare";
+    public const string Repo = "arostad/SubtitleCompare";
 
     public static string Current
     {
@@ -20,7 +20,7 @@ internal static class AppVersion
             }
 
             var v = Assembly.GetExecutingAssembly().GetName().Version;
-            return v is null ? "1.0.03" : $"{v.Major}.{v.Minor}.{v.Build:00}";
+            return v is null ? "1.1.23" : $"{v.Major}.{v.Minor}.{v.Build:00}";
         }
     }
 

@@ -13,6 +13,7 @@ public sealed class FfmpegExtract
 
     private readonly string _outputDirectory;
     private readonly ConcurrentDictionary<string, string> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, object> _gates = new(StringComparer.OrdinalIgnoreCase);
 
     public FfmpegExtract(string? outputDirectory = null)
     {
@@ -67,6 +68,24 @@ public sealed class FfmpegExtract
         if (_cache.TryGetValue(key, out var cached) && File.Exists(cached))
             return cached;
 
+        var gate = _gates.GetOrAdd(key, _ => new object());
+        lock (gate)
+        {
+            if (_cache.TryGetValue(key, out cached) && File.Exists(cached))
+                return cached;
+
+            return ExtractLocked(filePath, subtitleStreamIndex, extension, extraArgs, key, timeout);
+        }
+    }
+
+    private string ExtractLocked(
+        string filePath,
+        int subtitleStreamIndex,
+        string extension,
+        string[] extraArgs,
+        string key,
+        TimeSpan? timeout)
+    {
         var outPath = Path.Combine(_outputDirectory, $"s{subtitleStreamIndex}_{Guid.NewGuid():N}.{extension}");
         var args = new List<string>
         {

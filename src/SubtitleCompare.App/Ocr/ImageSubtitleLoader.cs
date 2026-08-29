@@ -15,6 +15,7 @@ internal sealed class ImageSubtitleLoader
 {
     private readonly FfmpegExtract _extractor;
     private readonly ConcurrentDictionary<string, ParsedSubtitles> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, object> _gates = new(StringComparer.OrdinalIgnoreCase);
 
     public ImageSubtitleLoader(FfmpegExtract extractor)
     {
@@ -34,6 +35,24 @@ internal sealed class ImageSubtitleLoader
         if (_cache.TryGetValue(key, out var cached))
             return cached;
 
+        var gate = _gates.GetOrAdd(key, _ => new object());
+        lock (gate)
+        {
+            if (_cache.TryGetValue(key, out cached))
+                return cached;
+
+            var parsed = LoadUncached(filePath, track, status, cancellationToken);
+            _cache[key] = parsed;
+            return parsed;
+        }
+    }
+
+    private ParsedSubtitles LoadUncached(
+        string filePath,
+        SubtitleTrackInfo track,
+        IProgress<OcrProgress> status,
+        CancellationToken cancellationToken)
+    {
         status.Report(Busy(LoadSteps.PullingTrack));
         var sup = _extractor.ExtractRaw(filePath, track.Index);
         cancellationToken.ThrowIfCancellationRequested();
@@ -42,9 +61,7 @@ internal sealed class ImageSubtitleLoader
         var presentations = PgsParser.ParseFile(sup);
         if (presentations.Count == 0)
         {
-            var empty = new ParsedSubtitles { Format = "ocr-pgs", Cues = Array.Empty<SubtitleCue>(), SourcePath = sup };
-            _cache[key] = empty;
-            return empty;
+            return new ParsedSubtitles { Format = "ocr-pgs", Cues = Array.Empty<SubtitleCue>(), SourcePath = sup };
         }
 
         var requested = TessLanguage.FromTag(track.Language);
@@ -56,21 +73,21 @@ internal sealed class ImageSubtitleLoader
         cancellationToken.ThrowIfCancellationRequested();
 
         status.Report(Busy(LoadSteps.StartingOcr));
-        using var engine = TesseractOcrEngine.Create(TessdataStore.DataPrefix, language);
+        var workers = OcrCueBuilder.WorkerCountForMachine(presentations.Count);
+        using var pool = TesseractOcrPool.Create(TessdataStore.DataPrefix, language, workers);
         var parsed = OcrCueBuilder.Build(
             presentations,
-            engine.Recognize,
+            pool.Recognize,
             status,
-            cancellationToken);
+            cancellationToken,
+            maxDegreeOfParallelism: workers);
 
-        parsed = new ParsedSubtitles
+        return new ParsedSubtitles
         {
             Format = parsed.Format,
             Cues = parsed.Cues,
             SourcePath = sup,
         };
-        _cache[key] = parsed;
-        return parsed;
     }
 
     private static OcrProgress Busy(string message) => new(0, 0, message);

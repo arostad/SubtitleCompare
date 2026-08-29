@@ -22,11 +22,8 @@ public static class OcrImagePreprocessor
         if (source.IsEmpty)
             return BinaryImage.Empty;
 
-        if (!TryContentBounds(source, out var left, out var top, out var right, out var bottom))
-            return BinaryImage.Empty;
-
-        Classify(source, out var content, out var opaque, out var lumaSum);
-        if (content == 0)
+        if (!TryScan(source, out var left, out var top, out var right, out var bottom,
+                out var content, out var opaque, out var lumaSum))
             return BinaryImage.Empty;
 
         left = Math.Max(0, left - padding);
@@ -47,12 +44,18 @@ public static class OcrImagePreprocessor
         else
         {
             var gray = new byte[cw * ch];
+            var rgba = source.Rgba;
+            var srcStride = source.Width * 4;
             for (var y = 0; y < ch; y++)
             {
+                var srcRow = (top + y) * srcStride + left * 4;
+                var destRow = y * cw;
                 for (var x = 0; x < cw; x++)
                 {
-                    var (r, g, b, a) = source.Pixel(left + x, top + y);
-                    gray[y * cw + x] = a < AlphaContent ? (byte)255 : Luma(r, g, b);
+                    var i = srcRow + x * 4;
+                    gray[destRow + x] = rgba[i + 3] < AlphaContent
+                        ? (byte)255
+                        : Luma(rgba[i], rgba[i + 1], rgba[i + 2]);
                 }
             }
 
@@ -63,40 +66,42 @@ public static class OcrImagePreprocessor
         return ScaleNearest(ink, cw, ch, scale);
     }
 
-    private static void Classify(SubtitleBitmap source, out int content, out int opaque, out long lumaSum)
-    {
-        content = 0;
-        opaque = 0;
-        lumaSum = 0;
-        for (var y = 0; y < source.Height; y++)
-        {
-            for (var x = 0; x < source.Width; x++)
-            {
-                var (r, g, b, a) = source.Pixel(x, y);
-                if (a < AlphaContent)
-                    continue;
-                content++;
-                lumaSum += Luma(r, g, b);
-                if (a >= AlphaOpaque)
-                    opaque++;
-            }
-        }
-    }
-
-    private static bool TryContentBounds(
+    /// <summary>
+    /// One pass over the RGBA buffer: content bounds plus classify stats.
+    /// </summary>
+    private static bool TryScan(
         SubtitleBitmap source,
-        out int left, out int top, out int right, out int bottom)
+        out int left, out int top, out int right, out int bottom,
+        out int content, out int opaque, out long lumaSum)
     {
         left = source.Width;
         top = source.Height;
         right = -1;
         bottom = -1;
-        for (var y = 0; y < source.Height; y++)
+        content = 0;
+        opaque = 0;
+        lumaSum = 0;
+
+        var rgba = source.Rgba;
+        var width = source.Width;
+        var height = source.Height;
+        var stride = width * 4;
+
+        for (var y = 0; y < height; y++)
         {
-            for (var x = 0; x < source.Width; x++)
+            var row = y * stride;
+            for (var x = 0; x < width; x++)
             {
-                if (source.Pixel(x, y).A < AlphaContent)
+                var i = row + x * 4;
+                var a = rgba[i + 3];
+                if (a < AlphaContent)
                     continue;
+
+                content++;
+                lumaSum += Luma(rgba[i], rgba[i + 1], rgba[i + 2]);
+                if (a >= AlphaOpaque)
+                    opaque++;
+
                 if (x < left) left = x;
                 if (x > right) right = x;
                 if (y < top) top = y;
@@ -104,18 +109,22 @@ public static class OcrImagePreprocessor
             }
         }
 
-        return right >= left && bottom >= top;
+        return content > 0 && right >= left && bottom >= top;
     }
 
     private static byte[] AlphaAsInk(SubtitleBitmap source, int left, int top, int width, int height)
     {
         var ink = new byte[width * height];
+        var rgba = source.Rgba;
+        var srcStride = source.Width * 4;
         for (var y = 0; y < height; y++)
         {
+            var srcRow = (top + y) * srcStride + left * 4;
+            var destRow = y * width;
             for (var x = 0; x < width; x++)
             {
-                var a = source.Pixel(left + x, top + y).A;
-                ink[y * width + x] = a >= AlphaContent ? (byte)0 : (byte)255;
+                var a = rgba[srcRow + x * 4 + 3];
+                ink[destRow + x] = a >= AlphaContent ? (byte)0 : (byte)255;
             }
         }
 
@@ -183,8 +192,10 @@ public static class OcrImagePreprocessor
         for (var y = 0; y < dh; y++)
         {
             var sy = y / scale;
+            var srcRow = sy * width;
+            var destRow = y * dw;
             for (var x = 0; x < dw; x++)
-                dest[y * dw + x] = src[sy * width + (x / scale)];
+                dest[destRow + x] = src[srcRow + (x / scale)];
         }
 
         return new BinaryImage(dw, dh, dest);
