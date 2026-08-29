@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Text;
 
 namespace SubtitleCompare.App;
@@ -13,29 +14,35 @@ internal sealed class UpdateInfo
 
 internal static class UpdateChecker
 {
+    private const string VersionUrl =
+        "https://github.com/arostad/subtitle-compare/releases/download/latest/version.txt";
+    private const string ExeUrl =
+        "https://github.com/arostad/subtitle-compare/releases/download/latest/SubtitleCompare.exe";
+
+    private static readonly HttpClient Http = CreateClient();
+
+    private static HttpClient CreateClient()
+    {
+        var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = true })
+        {
+            Timeout = TimeSpan.FromMinutes(15),
+        };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("SubtitleCompare");
+        return client;
+    }
+
     public static UpdateInfo Check()
     {
         try
         {
-            var gh = ResolveGh();
-            if (gh is null)
-            {
-                return new UpdateInfo
-                {
-                    RemoteVersion = "",
-                    IsNewer = false,
-                    Error = "GitHub CLI is not installed. Updates use the same gh login as the installer.",
-                };
-            }
-
-            var remoteText = TryDownloadReleaseText(gh, "version.txt")?.Trim();
+            var remoteText = Http.GetStringAsync(VersionUrl).GetAwaiter().GetResult()?.Trim();
             if (string.IsNullOrWhiteSpace(remoteText))
             {
                 return new UpdateInfo
                 {
                     RemoteVersion = "",
                     IsNewer = false,
-                    Error = "Could not read the latest version from GitHub. Is gh signed in?",
+                    Error = "Could not read the latest version from GitHub.",
                 };
             }
 
@@ -59,25 +66,20 @@ internal static class UpdateChecker
 
     public static void DownloadAndRestart()
     {
-        var gh = ResolveGh() ?? throw new InvalidOperationException("GitHub CLI (gh) was not found.");
         var dir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var exe = Environment.ProcessPath ?? Path.Combine(dir, "SubtitleCompare.exe");
         var pending = Path.Combine(dir, "SubtitleCompare.exe.new");
 
-        var download = Run(gh, [
-            "release", "download", "latest",
-            "--repo", AppVersion.Repo,
-            "--pattern", "SubtitleCompare.exe",
-            "--clobber",
-            "--output", pending,
-        ], timeoutMs: 15 * 60 * 1000);
-
-        if (download.ExitCode != 0 || !File.Exists(pending) || new FileInfo(pending).Length < 1_000_000)
+        using (var response = Http.GetAsync(ExeUrl, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult())
         {
-            var err = string.IsNullOrWhiteSpace(download.Stderr) ? download.Stdout : download.Stderr;
-            throw new InvalidOperationException(
-                string.IsNullOrWhiteSpace(err) ? "Download failed." : err.Trim());
+            response.EnsureSuccessStatusCode();
+            using var input = response.Content.ReadAsStream();
+            using var output = File.Create(pending);
+            input.CopyTo(output);
         }
+
+        if (!File.Exists(pending) || new FileInfo(pending).Length < 1_000_000)
+            throw new InvalidOperationException("Download failed.");
 
         var pid = Environment.ProcessId;
         var bat = Path.Combine(Path.GetTempPath(), $"subtitle-compare-update-{pid}.cmd");
@@ -101,69 +103,5 @@ internal static class UpdateChecker
             CreateNoWindow = true,
             UseShellExecute = false,
         });
-    }
-
-    private static string? TryDownloadReleaseText(string gh, string name)
-    {
-        var dest = Path.Combine(Path.GetTempPath(), $"sc-{name}");
-        try { if (File.Exists(dest)) File.Delete(dest); } catch { /* ignore */ }
-        var r = Run(gh, [
-            "release", "download", "latest",
-            "--repo", AppVersion.Repo,
-            "--pattern", name,
-            "--clobber",
-            "--output", dest,
-        ]);
-        if (r.ExitCode != 0 || !File.Exists(dest))
-            return null;
-        return File.ReadAllText(dest);
-    }
-
-    private static string? ResolveGh()
-    {
-        var fromPath = Run("where", ["gh"]).Stdout.Trim().Split('\n', '\r')
-            .Select(s => s.Trim())
-            .FirstOrDefault(File.Exists);
-        if (fromPath is not null)
-            return fromPath;
-
-        foreach (var candidate in new[]
-                 {
-                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitHub CLI", "gh.exe"),
-                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "GitHub CLI", "gh.exe"),
-                 })
-        {
-            if (File.Exists(candidate))
-                return candidate;
-        }
-
-        return null;
-    }
-
-    private readonly record struct ProcResult(int ExitCode, string Stdout, string Stderr);
-
-    private static ProcResult Run(string file, IReadOnlyList<string> args, int timeoutMs = 60_000)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = file,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        foreach (var a in args)
-            psi.ArgumentList.Add(a);
-
-        using var p = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start {file}.");
-        var stdout = p.StandardOutput.ReadToEnd();
-        var stderr = p.StandardError.ReadToEnd();
-        if (!p.WaitForExit(timeoutMs))
-        {
-            try { p.Kill(entireProcessTree: true); } catch { /* ignore */ }
-            throw new TimeoutException($"{file} timed out.");
-        }
-
-        return new ProcResult(p.ExitCode, stdout, stderr);
     }
 }

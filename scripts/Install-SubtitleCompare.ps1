@@ -1,30 +1,16 @@
 # Installs SubtitleCompare.exe to %LOCALAPPDATA%\SubtitleCompare
 # and creates Desktop + Start Menu shortcuts.
-# Requires: GitHub CLI signed in (`gh auth login`).
 $ErrorActionPreference = "Stop"
-$Repo = "arostad/subtitle-compare"
+$ProgressPreference = "SilentlyContinue"
+$Url = "https://github.com/arostad/subtitle-compare/releases/download/latest/SubtitleCompare.exe"
 $InstallDir = Join-Path $env:LOCALAPPDATA "SubtitleCompare"
 $ExePath = Join-Path $InstallDir "SubtitleCompare.exe"
 
 Write-Host "Installing Subtitle Compare..."
-
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
-            [System.Environment]::GetEnvironmentVariable("Path", "User")
-
-if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    throw "GitHub CLI (gh) not found. In a new PowerShell window run: winget install --id GitHub.cli -e"
-}
-
-gh auth status 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Sign in to GitHub (browser will open)..."
-    gh auth login --hostname github.com --git-protocol https --web
-}
-
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
 Write-Host "Downloading SubtitleCompare.exe from the Latest release..."
-gh release download latest --repo $Repo --pattern "SubtitleCompare.exe" --clobber --dir $InstallDir
+Invoke-WebRequest -Uri $Url -OutFile $ExePath -UseBasicParsing
 
 if (-not (Test-Path $ExePath) -or (Get-Item $ExePath).Length -lt 1MB) {
     throw "Download failed. SubtitleCompare.exe is missing or too small in $InstallDir"

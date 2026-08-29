@@ -1,19 +1,10 @@
-# Pulls the latest SubtitleCompare.exe from the private GitHub release.
+# Pulls the latest SubtitleCompare.exe from the public GitHub release.
 $ErrorActionPreference = "Stop"
-$Repo = "arostad/subtitle-compare"
+$ProgressPreference = "SilentlyContinue"
+$Url = "https://github.com/arostad/subtitle-compare/releases/download/latest/SubtitleCompare.exe"
 $InstallDir = Join-Path $env:LOCALAPPDATA "SubtitleCompare"
 $ExePath = Join-Path $InstallDir "SubtitleCompare.exe"
 $PendingPath = Join-Path $InstallDir "SubtitleCompare.exe.new"
-$TempPath = Join-Path $InstallDir "SubtitleCompare.exe.download"
-
-if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    throw "GitHub CLI (gh) is not on PATH. Install it with: winget install --id GitHub.cli -e"
-}
-
-gh auth status 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw "GitHub CLI is not signed in. Run: gh auth login"
-}
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
@@ -22,29 +13,16 @@ if ((Test-Path $PendingPath) -and -not $running) {
     Move-Item -Force $PendingPath $ExePath
 }
 
-$release = gh api "repos/$Repo/releases/tags/latest" | ConvertFrom-Json
-$asset = $release.assets | Where-Object { $_.name -eq "SubtitleCompare.exe" } | Select-Object -First 1
-if (-not $asset) {
-    throw "No SubtitleCompare.exe on the Latest release."
+$dest = if ($running) { $PendingPath } else { $ExePath }
+Write-Host "Downloading SubtitleCompare.exe..."
+Invoke-WebRequest -Uri $Url -OutFile $dest -UseBasicParsing
+
+if (-not (Test-Path $dest) -or (Get-Item $dest).Length -lt 1MB) {
+    throw "Download failed. File is missing or too small: $dest"
 }
 
-if (Test-Path $ExePath) {
-    $local = Get-Item $ExePath
-    if ([int64]$local.Length -eq [int64]$asset.size) {
-        Write-Host "Subtitle Compare is already up to date."
-        exit 0
-    }
-}
-
-Write-Host "Downloading SubtitleCompare.exe ($([math]::Round($asset.size/1MB,1)) MB)..."
-if (Test-Path $TempPath) { Remove-Item -Force $TempPath }
-gh release download latest --repo $Repo --pattern "SubtitleCompare.exe" --clobber --output $TempPath
-
-$dest = $(if ($running) { $PendingPath } else { $ExePath })
-Move-Item -Force $TempPath $dest
-
-if ($dest -eq $PendingPath) {
-    Write-Host "Update downloaded. It will apply the next time Subtitle Compare is not running."
+if ($running) {
+    Write-Host "App is running. Close it and the new exe will replace it, or use Update in the app."
 } else {
-    Write-Host "Installed to $ExePath"
+    Write-Host "Updated: $ExePath"
 }
