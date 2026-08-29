@@ -17,7 +17,17 @@
                    FontSize="13"
                    TextWrapping="Wrap"
                    Foreground="{DynamicResource EqualFg}"
-                   Text="Subtitle Compare uses FFmpeg to read subtitle tracks from MKV files. Install it, then you can drop a file."/>
+                   Text="An MKV is a container: video, audio, and subtitles are packed together. This app does not unpack those streams itself. FFmpeg lists the subtitle tracks and extracts the text so the three panes can compare them. Without it, a dropped file cannot be read."/>
+        <TextBlock Margin="0,8,0,0"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource MutedFg}">
+            <Run Text="FFmpeg is from "/>
+            <Hyperlink NavigateUri="https://ffmpeg.org/"
+                       RequestNavigate="OnNavigate"
+                       Foreground="#4C8DFF">ffmpeg.org</Hyperlink>
+            <Run Text=". The winget package is the official Windows build they list (Gyan.FFmpeg), not a random third-party tool."/>
+        </TextBlock>
         <TextBlock Margin="0,16,0,4"
                    FontSize="12"
                    Foreground="{DynamicResource MutedFg}"

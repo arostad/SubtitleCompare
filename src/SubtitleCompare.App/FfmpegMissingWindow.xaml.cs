@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Navigation;
 using SubtitleCompare.Core.Ffmpeg;
 
 namespace SubtitleCompare.App;
@@ -18,6 +19,12 @@ public partial class FfmpegMissingWindow : Window
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e) => Theme.ApplyCaption(this);
+
+    private void OnNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
+    }
 
     private void OnCopyClick(object sender, RoutedEventArgs e)
     {
