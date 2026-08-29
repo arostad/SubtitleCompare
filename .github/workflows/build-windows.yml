@@ -6,6 +6,8 @@ on:
     paths-ignore:
       - "README.md"
       - "docs/**"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -46,6 +48,7 @@ jobs:
             publish/version.txt
 
       - name: Update Latest release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
