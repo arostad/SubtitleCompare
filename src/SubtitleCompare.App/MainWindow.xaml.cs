@@ -61,6 +61,7 @@ public partial class MainWindow : Window
             box.DisplayMemberPath = nameof(TrackChoice.Label);
 
         Theme.Changed += OnThemeChanged;
+        RefreshThemeToggle();
         Loaded += OnWindowLoaded;
 
         var args = Environment.GetCommandLineArgs();
@@ -95,8 +96,19 @@ public partial class MainWindow : Window
     private void OnThemeChanged(object? sender, EventArgs e)
     {
         Theme.ApplyCaption(this);
+        RefreshThemeToggle();
         if (_rows.Count > 0)
             RebuildCompare();
+    }
+
+    private void OnThemeToggleClick(object sender, RoutedEventArgs e) => Theme.Toggle();
+
+    private void RefreshThemeToggle()
+    {
+        var switchToLight = !Theme.IsAppsLight;
+        ThemeToggleButton.ToolTip = switchToLight ? "Switch to light theme" : "Switch to dark theme";
+        ThemeSunGlyph.Visibility = switchToLight ? Visibility.Visible : Visibility.Collapsed;
+        ThemeMoonGlyph.Visibility = switchToLight ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void OnWindowClosed(object sender, EventArgs e)
