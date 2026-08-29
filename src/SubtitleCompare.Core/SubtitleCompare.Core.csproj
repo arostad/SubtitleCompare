@@ -7,4 +7,7 @@
     <AssemblyName>SubtitleCompare.Core</AssemblyName>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SubtitleCompare.Tests" />
+  </ItemGroup>
 </Project>

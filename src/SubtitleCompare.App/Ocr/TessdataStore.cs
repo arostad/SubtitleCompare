@@ -1,5 +1,6 @@
 using System.IO;
 using System.Net.Http;
+using SubtitleCompare.Core.Diagnostics;
 using SubtitleCompare.Core.Ocr;
 
 namespace SubtitleCompare.App.Ocr;
@@ -37,7 +38,10 @@ internal static class TessdataStore
         try
         {
             if (HasLanguage(language))
+            {
+                DebugLog.Info($"tessdata {language} already present ({new FileInfo(LanguagePath(language)).Length} bytes)");
                 return language;
+            }
 
             status?.Report($"Downloading {TessLanguage.DisplayName(language)} OCR data…");
             if (await TryDownloadAsync(language, cancellationToken).ConfigureAwait(false))
@@ -81,7 +85,10 @@ internal static class TessdataStore
             using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
+            {
+                DebugLog.Error($"tessdata download failed for {language} (HTTP {(int)response.StatusCode})");
                 return false;
+            }
 
             await using (var input = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
             await using (var output = File.Create(tmp))
@@ -92,10 +99,12 @@ internal static class TessdataStore
             if (!File.Exists(tmp) || new FileInfo(tmp).Length < 50_000)
             {
                 TryDelete(tmp);
+                DebugLog.Error($"tessdata download failed for {language} (file too small)");
                 return false;
             }
 
             File.Move(tmp, dest, overwrite: true);
+            DebugLog.Info($"downloaded tessdata {language} ({new FileInfo(dest).Length} bytes)");
             return true;
         }
         catch (OperationCanceledException)
@@ -103,9 +112,10 @@ internal static class TessdataStore
             TryDelete(tmp);
             throw;
         }
-        catch
+        catch (Exception ex)
         {
             TryDelete(tmp);
+            DebugLog.Error($"tessdata download failed for {language}", ex);
             return false;
         }
     }
