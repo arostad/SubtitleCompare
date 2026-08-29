@@ -217,8 +217,7 @@ public partial class MainWindow : Window
         CompareGrid.RowDefinitions.Clear();
         SetBanner(null);
         Title = $"Subtitle Compare — {Path.GetFileName(path)}";
-        StatusFile.Text = Path.GetFileName(path);
-        StatusExtract.Text = "Probing subtitle tracks…";
+        StatusExtract.Text = "Probing…";
         StatusError.Text = "";
         ClearTrackHints();
 
@@ -371,7 +370,7 @@ public partial class MainWindow : Window
 
         UpdateSharedOcrStatus();
         SetOverlay(pane, "Extracting…");
-        Dispatcher.Invoke(() => StatusExtract.Text = $"Extracting track {choice.Track!.Index + 1}…");
+        Dispatcher.Invoke(() => StatusExtract.Text = "Extracting…");
 
         var file = _currentFile!;
         var index = choice.Track!.Index;
@@ -469,6 +468,7 @@ public partial class MainWindow : Window
                 return;
 
             _parsed[pane] = parsed;
+            FinishPaneOcr(pane);
             if (parsed.Cues.Count == 0)
                 SetOverlay(pane, "This track has no cues.");
             else if (parsed.Cues.All(c => string.IsNullOrWhiteSpace(c.Text)))
@@ -483,6 +483,7 @@ public partial class MainWindow : Window
         catch (FfmpegNotFoundException ex)
         {
             if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            FinishPaneOcr(pane);
             SetBanner(ex.Message);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
@@ -495,6 +496,7 @@ public partial class MainWindow : Window
         {
             if (gen != _loadGeneration || refresh != _refreshGeneration) return;
             DebugLog.Error("pane load failed", ex);
+            FinishPaneOcr(pane);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
             {
@@ -505,11 +507,7 @@ public partial class MainWindow : Window
         finally
         {
             if (gen == _loadGeneration && refresh == _refreshGeneration)
-            {
-                _ocrActive[pane] = false;
-                _paneOcr[pane] = null;
-                UpdateSharedOcrStatus();
-            }
+                FinishPaneOcr(pane);
         }
     }
 
@@ -520,16 +518,10 @@ public partial class MainWindow : Window
             hint.Text = "";
             hint.Visibility = Visibility.Collapsed;
         }
-        StatusHints.Text = "";
-        StatusHintsItem.Visibility = Visibility.Collapsed;
-        StatusHintsSep.Visibility = Visibility.Collapsed;
     }
 
     private void UpdateSdhHints()
     {
-        var statusParts = new List<string>();
-        var letters = new[] { "A", "B", "C" };
-
         for (var pane = 0; pane < 3; pane++)
         {
             var hint = _hints[pane];
@@ -554,20 +546,7 @@ public partial class MainWindow : Window
 
             hint.Text = string.Join(Environment.NewLine, lines);
             hint.Visibility = Visibility.Visible;
-            statusParts.Add($"{letters[pane]}: {string.Join(" · ", lines)}");
         }
-
-        if (statusParts.Count == 0)
-        {
-            StatusHints.Text = "";
-            StatusHintsItem.Visibility = Visibility.Collapsed;
-            StatusHintsSep.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        StatusHints.Text = string.Join("    ", statusParts);
-        StatusHintsItem.Visibility = Visibility.Visible;
-        StatusHintsSep.Visibility = Visibility.Visible;
     }
 
     private void RebuildCompare()
@@ -891,6 +870,13 @@ public partial class MainWindow : Window
             bar.Visibility = Visibility.Collapsed;
             bar.IsIndeterminate = false;
         }
+    }
+
+    private void FinishPaneOcr(int pane)
+    {
+        _ocrActive[pane] = false;
+        _paneOcr[pane] = null;
+        UpdateSharedOcrStatus();
     }
 
     private void UpdateSharedOcrStatus(int? preferPane = null)
