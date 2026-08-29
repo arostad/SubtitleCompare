@@ -302,5 +302,41 @@
             <Setter Property="Background" Value="{DynamicResource StatusBg}"/>
             <Setter Property="Foreground" Value="{DynamicResource EqualFg}"/>
         </Style>
+
+        <!-- Curved up-arrow + caption for empty (none) panes after a file is open. -->
+        <Style x:Key="PickTrackHint" TargetType="ContentControl">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Margin" Value="16,32,16,16"/>
+            <Setter Property="MaxWidth" Value="200"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContentControl">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Viewbox Width="52" Height="56" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                <Canvas Width="48" Height="56">
+                                    <Path Stroke="{DynamicResource MutedFg}"
+                                          StrokeThickness="6"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Flat"
+                                          Data="M 6,50 C 8,26 12,16 28,14"/>
+                                    <Path Fill="{DynamicResource MutedFg}"
+                                          Data="M 28,1 L 16,19 L 40,19 Z"/>
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock Text="Select a subtitle track above"
+                                       Foreground="{DynamicResource MutedFg}"
+                                       FontSize="13"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>
