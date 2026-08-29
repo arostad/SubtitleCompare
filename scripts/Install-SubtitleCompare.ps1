@@ -2,7 +2,7 @@
 # and creates Desktop + Start Menu shortcuts.
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
-$Url = "https://github.com/arostad/subtitle-compare/releases/download/latest/SubtitleCompare.exe"
+$Url = "https://github.com/arostad/SubtitleCompare/releases/download/latest/SubtitleCompare.exe"
 $InstallDir = Join-Path $env:LOCALAPPDATA "SubtitleCompare"
 $ExePath = Join-Path $InstallDir "SubtitleCompare.exe"
 
