@@ -31,7 +31,7 @@ public partial class AboutWindow : Window
     {
         var dlg = new SaveFileDialog
         {
-            FileName = "subtitle-compare-debug.txt",
+            FileName = $"subtitle-compare-debug-{DateTime.Now:yyyy-MM-dd-HHmmss}.txt",
             DefaultExt = ".txt",
             Filter = "Text files (*.txt)|*.txt",
         };
