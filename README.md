@@ -18,7 +18,7 @@ GitHub Actions builds the Windows exe on each push. The latest build is on the [
 - **Forced hints.** The same title / flag / both wording for forced tracks (`Forced subtitle track (from track flag)`, and so on). A track can show both SDH and forced.
 - **Windows light and dark.** Follows the OS theme, including the title bar.
 - **In-app updates.** On launch (and from About → Check for updates) the app offers to download the new exe and restart.
-- **Text tracks only.** Image subtitles (PGS, VobSub, DVB) cannot be compared as text; the pane says so.
+- **Image-track OCR.** PGS (Blu-ray) tracks are OCR'd on device with Tesseract and then compared like any text track. The first time a language is used, the app downloads that trained data into `%LOCALAPPDATA%\SubtitleCompare\tessdata`. Results can be imperfect, especially with stylized or outlined fonts. VobSub and DVB are still image-only.
 
 Vibe coded by [Andy Rostad](https://github.com/arostad). Released under the [MIT License](LICENSE).
 
@@ -54,4 +54,4 @@ After the first install, use **Update** in the app when it says a new version is
 
 ## Use
 
-Drop an `.mkv` (or Open…). Each pane picks a subtitle track. Image tracks cannot be compared as text. `F7` / `F8` jump differences.
+Drop an `.mkv` (or Open…). Each pane picks a subtitle track. PGS image tracks are OCR'd (first use may download language data). `F7` / `F8` jump differences.

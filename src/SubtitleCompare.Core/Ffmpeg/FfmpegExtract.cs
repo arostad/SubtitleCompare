@@ -3,8 +3,9 @@ using System.Collections.Concurrent;
 namespace SubtitleCompare.Core.Ffmpeg;
 
 /// <summary>
-/// Extracts one text subtitle stream to a temporary .srt via ffmpeg <c>-map 0:s:N</c>.
-/// Results are cached per (file identity, subtitle stream index).
+/// Extracts one subtitle stream via ffmpeg <c>-map 0:s:N</c>.
+/// Text tracks become a temporary .srt; image tracks can be copied raw to .sup.
+/// Results are cached per (file identity, subtitle stream index, extract mode).
 /// </summary>
 public sealed class FfmpegExtract
 {
@@ -24,6 +25,37 @@ public sealed class FfmpegExtract
 
     public string Extract(string filePath, int subtitleStreamIndex, TimeSpan? timeout = null)
     {
+        return ExtractCore(
+            filePath,
+            subtitleStreamIndex,
+            extension: "srt",
+            extraArgs: ["-c:s", "srt"],
+            cacheSuffix: "",
+            timeout: timeout);
+    }
+
+    /// <summary>
+    /// Copies one image subtitle stream (PGS) to a temporary <c>.sup</c> without transcoding.
+    /// </summary>
+    public string ExtractRaw(string filePath, int subtitleStreamIndex, TimeSpan? timeout = null)
+    {
+        return ExtractCore(
+            filePath,
+            subtitleStreamIndex,
+            extension: "sup",
+            extraArgs: ["-c", "copy", "-f", "sup"],
+            cacheSuffix: "|raw",
+            timeout: timeout);
+    }
+
+    private string ExtractCore(
+        string filePath,
+        int subtitleStreamIndex,
+        string extension,
+        string[] extraArgs,
+        string cacheSuffix,
+        TimeSpan? timeout)
+    {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path is required.", nameof(filePath));
         if (subtitleStreamIndex < 0)
@@ -31,19 +63,19 @@ public sealed class FfmpegExtract
         if (!File.Exists(filePath))
             throw new FileNotFoundException("Media file not found.", filePath);
 
-        var key = CacheKey(filePath, subtitleStreamIndex);
+        var key = CacheKey(filePath, subtitleStreamIndex) + cacheSuffix;
         if (_cache.TryGetValue(key, out var cached) && File.Exists(cached))
             return cached;
 
-        var outPath = Path.Combine(_outputDirectory, $"s{subtitleStreamIndex}_{Guid.NewGuid():N}.srt");
-        var args = new[]
+        var outPath = Path.Combine(_outputDirectory, $"s{subtitleStreamIndex}_{Guid.NewGuid():N}.{extension}");
+        var args = new List<string>
         {
             "-y",
             "-i", filePath,
             "-map", $"0:s:{subtitleStreamIndex}",
-            "-c:s", "srt",
-            outPath,
         };
+        args.AddRange(extraArgs);
+        args.Add(outPath);
 
         var result = FfmpegProcess.Run("ffmpeg", args, timeout ?? DefaultTimeout);
         if (result.TimedOut)
