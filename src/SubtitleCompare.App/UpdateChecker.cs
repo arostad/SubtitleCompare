@@ -152,10 +152,10 @@ internal static class UpdateChecker
     {
         for (var attempt = 0; attempt < 2; attempt++)
         {
-            var expectedHash = ReadChecksum();
             var pending = Path.Combine(directory, $"{ExeFileName}.{Guid.NewGuid():N}.new");
             try
             {
+                var expectedHash = ReadChecksum();
                 DownloadExe(pending);
                 if (new FileInfo(pending).Length < MinExeBytes)
                     throw new InvalidOperationException("Download failed.");
@@ -165,7 +165,8 @@ internal static class UpdateChecker
             catch
             {
                 try { File.Delete(pending); } catch { /* best effort */ }
-                throw;
+                if (attempt == 1)
+                    throw;
             }
 
             try { File.Delete(pending); } catch { /* best effort */ }

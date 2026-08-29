@@ -48,6 +48,7 @@ jobs:
         run: |
           $hash = (Get-FileHash -Path publish/SubtitleCompare.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content -Path publish/SubtitleCompare.exe.sha256 -Value "$hash  SubtitleCompare.exe" -NoNewline
+          Copy-Item -Path scripts/Install-SubtitleCompare.ps1 -Destination publish/Install-SubtitleCompare.ps1
 
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -56,6 +57,7 @@ jobs:
           path: |
             publish/SubtitleCompare.exe
             publish/SubtitleCompare.exe.sha256
+            publish/Install-SubtitleCompare.ps1
             publish/version.txt
 
   release:
@@ -83,5 +85,6 @@ jobs:
           files: |
             release/SubtitleCompare.exe
             release/SubtitleCompare.exe.sha256
+            release/Install-SubtitleCompare.ps1
             release/version.txt
           make_latest: true

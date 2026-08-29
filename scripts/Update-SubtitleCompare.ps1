@@ -1,6 +1,7 @@
 # Pulls the latest SubtitleCompare.exe from the public GitHub release.
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 Add-Type -AssemblyName System.Net.Http
 $ReleaseBase = "https://github.com/arostad/SubtitleCompare/releases/download/latest"
 $InstallDir = Join-Path $env:LOCALAPPDATA "SubtitleCompare"
@@ -9,7 +10,6 @@ $PendingPath = Join-Path $InstallDir "SubtitleCompare.exe.$([Guid]::NewGuid().To
 $TrustedHosts = @("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
 $DownloadHandler = [System.Net.Http.HttpClientHandler]::new()
 $DownloadHandler.AllowAutoRedirect = $false
-$DownloadHandler.SslProtocols = [System.Security.Authentication.SslProtocols]::Tls12
 $DownloadClient = [System.Net.Http.HttpClient]::new($DownloadHandler)
 $DownloadClient.Timeout = [TimeSpan]::FromMinutes(15)
 $DownloadClient.DefaultRequestHeaders.UserAgent.ParseAdd("SubtitleCompare")

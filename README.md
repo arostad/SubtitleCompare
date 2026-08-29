@@ -44,7 +44,8 @@ The app also pops a dialog if FFmpeg is missing, with an Install FFmpeg button (
 In PowerShell, save the installer, then run it (do not pipe the script):
 
 ```
-irm https://raw.githubusercontent.com/arostad/SubtitleCompare/main/scripts/Install-SubtitleCompare.ps1 -OutFile $env:TEMP\Install-SubtitleCompare.ps1
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+irm https://github.com/arostad/SubtitleCompare/releases/download/latest/Install-SubtitleCompare.ps1 -OutFile $env:TEMP\Install-SubtitleCompare.ps1
 ```
 
 ```
