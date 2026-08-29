@@ -1,17 +1,10 @@
-<table border="0" cellpadding="0" cellspacing="0">
-<tr>
-<td width="180" valign="top">
-<img src="src/SubtitleCompare.App/Assets/app.png" width="180" alt="Subtitle Compare">
-</td>
-<td valign="top">
+<img src="src/SubtitleCompare.App/Assets/app.png" width="180" align="left" alt="Subtitle Compare">
 
-# Subtitle Compare
+<h3><u>Subtitle Compare</u></h3>
 
 Windows app for comparing subtitle tracks inside an MKV (or similar container). Drop a file on the window, pick up to three tracks, and compare them side by side.
 
-</td>
-</tr>
-</table>
+<br clear="all">
 
 ## Features
 
