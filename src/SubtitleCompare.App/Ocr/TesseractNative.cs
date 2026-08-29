@@ -1,4 +1,5 @@
 using System.IO;
+using SubtitleCompare.Core.Diagnostics;
 using Tesseract;
 
 namespace SubtitleCompare.App.Ocr;
@@ -29,6 +30,7 @@ internal static class TesseractNative
         }
         catch (Exception ex)
         {
+            DebugLog.Error("Tesseract native libraries unavailable", ex);
             throw new InvalidOperationException(
                 "Tesseract OCR engine could not be loaded. The native OCR libraries are missing or could not be extracted.",
                 ex);
@@ -45,7 +47,10 @@ internal static class TesseractNative
     {
         var dest = Path.Combine(dir, name);
         if (File.Exists(dest) && new FileInfo(dest).Length > 10_000)
+        {
+            DebugLog.Info($"{name} already present ({new FileInfo(dest).Length} bytes)");
             return;
+        }
 
         using var stream = OpenLibrary(name)
             ?? throw new FileNotFoundException($"Embedded OCR library '{name}' was not found in this build.");
@@ -54,6 +59,7 @@ internal static class TesseractNative
         using (var output = File.Create(tmp))
             stream.CopyTo(output);
         File.Move(tmp, dest, overwrite: true);
+        DebugLog.Info($"extracted {name} ({new FileInfo(dest).Length} bytes)");
     }
 
     private static Stream? OpenLibrary(string name)

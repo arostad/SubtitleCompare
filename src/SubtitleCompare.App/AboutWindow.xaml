@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="About Subtitle Compare"
-        Width="360" SizeToContent="Height"
+        Width="420" SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
@@ -20,7 +20,7 @@
                    HorizontalAlignment="Center"
                    Foreground="{DynamicResource EqualFg}"/>
         <TextBlock x:Name="VersionText"
-                   Text="Version 1.0.03"
+                   Text="Version 1.1.09"
                    FontSize="13"
                    HorizontalAlignment="Center"
                    Margin="0,6,0,0"
@@ -35,6 +35,17 @@
         <Button x:Name="CheckUpdatesButton" Content="Check for updates"
                 Margin="0,18,0,0" HorizontalAlignment="Center"
                 Click="OnCheckUpdatesClick"/>
+        <Button x:Name="SaveDebugButton" Content="Save debug data…"
+                Margin="0,10,0,0" HorizontalAlignment="Center"
+                Click="OnSaveDebugClick"/>
+        <TextBlock x:Name="DebugPrivacyNote"
+                   FontSize="11"
+                   TextAlignment="Center"
+                   TextWrapping="Wrap"
+                   HorizontalAlignment="Center"
+                   Margin="8,8,8,0"
+                   Foreground="{DynamicResource MutedFg}"
+                   Text="Saves a text file with app version, OS, and OCR/FFmpeg status. Usernames, machine name, file paths, media titles, and subtitle text are stripped."/>
         <TextBlock x:Name="UpdateStatus"
                    FontSize="12"
                    TextAlignment="Center"

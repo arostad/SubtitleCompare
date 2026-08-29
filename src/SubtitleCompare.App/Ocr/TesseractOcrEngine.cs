@@ -1,3 +1,4 @@
+using SubtitleCompare.Core.Diagnostics;
 using SubtitleCompare.Core.Ocr;
 using Tesseract;
 
@@ -25,6 +26,7 @@ internal sealed class TesseractOcrEngine : IDisposable
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
         {
+            DebugLog.Error("Tesseract OCR engine could not be loaded", ex);
             throw new InvalidOperationException(
                 "Tesseract OCR engine could not be loaded. Language data may be missing or the native libraries failed to start.",
                 ex);

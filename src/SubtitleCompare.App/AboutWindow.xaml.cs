@@ -1,6 +1,10 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Navigation;
+using Microsoft.Win32;
+using SubtitleCompare.App.Diagnostics;
+using SubtitleCompare.Core.Diagnostics;
 
 namespace SubtitleCompare.App;
 
@@ -12,6 +16,7 @@ public partial class AboutWindow : Window
     {
         InitializeComponent();
         VersionText.Text = $"Version {AppVersion.Current}";
+        DebugPrivacyNote.Text = DebugReport.PrivacyNote;
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e) => Theme.ApplyCaption(this);
@@ -20,6 +25,28 @@ public partial class AboutWindow : Window
     {
         Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
         e.Handled = true;
+    }
+
+    private void OnSaveDebugClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            FileName = "subtitle-compare-debug.txt",
+            DefaultExt = ".txt",
+            Filter = "Text files (*.txt)|*.txt",
+        };
+        if (dlg.ShowDialog(this) != true)
+            return;
+
+        try
+        {
+            File.WriteAllText(dlg.FileName, DebugReport.Build());
+            UpdateStatus.Text = "Saved.";
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = Anon.Text(ex.Message);
+        }
     }
 
     private async void OnCheckUpdatesClick(object sender, RoutedEventArgs e)

@@ -7,6 +7,7 @@ using System.Windows.Media;
 using Microsoft.Win32;
 using SubtitleCompare.App.Ocr;
 using SubtitleCompare.Core.Analysis;
+using SubtitleCompare.Core.Diagnostics;
 using SubtitleCompare.Core.Alignment;
 using SubtitleCompare.Core.Diff;
 using SubtitleCompare.Core.Ffmpeg;
@@ -392,6 +393,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            DebugLog.Error("pane load failed", ex);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
             {
@@ -472,6 +474,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            DebugLog.Error("pane load failed", ex);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
             {
