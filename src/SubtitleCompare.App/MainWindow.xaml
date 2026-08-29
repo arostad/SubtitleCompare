@@ -103,6 +103,7 @@
             <Grid x:Name="LoadedState" Visibility="Collapsed">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="8"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
@@ -121,7 +122,20 @@
                 <ComboBox x:Name="SlotC" Grid.Row="0" Grid.Column="4"
                           SelectionChanged="OnSlotSelectionChanged"/>
 
-                <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5"
+                <TextBlock x:Name="HintA" Grid.Row="1" Grid.Column="0"
+                           Margin="2,4,2,0" FontSize="11"
+                           Foreground="{DynamicResource MutedFg}"
+                           TextWrapping="Wrap" Visibility="Collapsed"/>
+                <TextBlock x:Name="HintB" Grid.Row="1" Grid.Column="2"
+                           Margin="2,4,2,0" FontSize="11"
+                           Foreground="{DynamicResource MutedFg}"
+                           TextWrapping="Wrap" Visibility="Collapsed"/>
+                <TextBlock x:Name="HintC" Grid.Row="1" Grid.Column="4"
+                           Margin="2,4,2,0" FontSize="11"
+                           Foreground="{DynamicResource MutedFg}"
+                           TextWrapping="Wrap" Visibility="Collapsed"/>
+
+                <Border Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="5"
                         Background="{DynamicResource PanelBg}"
                         BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1"

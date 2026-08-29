@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
+using SubtitleCompare.Core.Analysis;
 using SubtitleCompare.Core.Alignment;
 using SubtitleCompare.Core.Diff;
 using SubtitleCompare.Core.Ffmpeg;
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
     private static readonly string[] MediaExtensions = [".mkv", ".mka", ".mks", ".mp4", ".m4v"];
 
     private readonly ComboBox[] _slots;
+    private readonly TextBlock[] _hints;
     private readonly Border[] _overlays;
     private readonly TextBlock[] _overlayTexts;
 
@@ -39,6 +41,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _slots = [SlotA, SlotB, SlotC];
+        _hints = [HintA, HintB, HintC];
         _overlays = [OverlayA, OverlayB, OverlayC];
         _overlayTexts = [OverlayAText, OverlayBText, OverlayCText];
 
@@ -294,6 +297,7 @@ public partial class MainWindow : Window
 
         await Task.WhenAll(tasks);
         if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+        UpdateSdhHints();
         RebuildCompare();
     }
 
@@ -352,6 +356,32 @@ public partial class MainWindow : Window
                 StatusExtract.Text = "Extract failed";
                 StatusError.Text = ex.Message;
             });
+        }
+    }
+
+    private void UpdateSdhHints()
+    {
+        for (var pane = 0; pane < 3; pane++)
+        {
+            var hint = _hints[pane];
+            var choice = _slots[pane].SelectedItem as TrackChoice;
+            if (choice is null || choice.IsNone || choice.IsImage || _parsed[pane] is null)
+            {
+                hint.Text = "";
+                hint.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            var assessment = SdhDetector.Evaluate(choice.Track, _parsed[pane]!.Cues);
+            if (!assessment.IsLikelySdh)
+            {
+                hint.Text = "";
+                hint.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            hint.Text = assessment.Label;
+            hint.Visibility = Visibility.Visible;
         }
     }
 
