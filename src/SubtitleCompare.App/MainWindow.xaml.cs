@@ -188,6 +188,7 @@ public partial class MainWindow : Window
         StatusFile.Text = Path.GetFileName(path);
         StatusExtract.Text = "Probing subtitle tracks…";
         StatusError.Text = "";
+        ClearTrackHints();
 
         IReadOnlyList<SubtitleTrackInfo> tracks;
         try
@@ -227,6 +228,7 @@ public partial class MainWindow : Window
             SetOverlay(2, "No subtitle tracks in this file.");
             PrevDiffButton.IsEnabled = false;
             NextDiffButton.IsEnabled = false;
+            UpdateSdhHints();
             return;
         }
 
@@ -359,30 +361,58 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ClearTrackHints()
+    {
+        foreach (var hint in _hints)
+        {
+            hint.Text = "";
+            hint.Visibility = Visibility.Collapsed;
+        }
+        StatusHints.Text = "";
+        StatusHintsItem.Visibility = Visibility.Collapsed;
+        StatusHintsSep.Visibility = Visibility.Collapsed;
+    }
+
     private void UpdateSdhHints()
     {
+        var statusParts = new List<string>();
+        var letters = new[] { "A", "B", "C" };
+
         for (var pane = 0; pane < 3; pane++)
         {
             var hint = _hints[pane];
             var choice = _slots[pane].SelectedItem as TrackChoice;
-            if (choice is null || choice.IsNone || choice.IsImage || _parsed[pane] is null)
+            if (choice is null || choice.IsNone)
             {
                 hint.Text = "";
                 hint.Visibility = Visibility.Collapsed;
                 continue;
             }
 
-            var assessment = SdhDetector.Evaluate(choice.Track, _parsed[pane]!.Cues);
-            if (!assessment.IsLikelySdh)
+            var lines = SdhDetector.Describe(choice.Track, _parsed[pane]?.Cues);
+            if (lines.Count == 0)
             {
                 hint.Text = "";
                 hint.Visibility = Visibility.Collapsed;
                 continue;
             }
 
-            hint.Text = assessment.Label;
+            hint.Text = string.Join(Environment.NewLine, lines);
             hint.Visibility = Visibility.Visible;
+            statusParts.Add($"{letters[pane]}: {string.Join(" · ", lines)}");
         }
+
+        if (statusParts.Count == 0)
+        {
+            StatusHints.Text = "";
+            StatusHintsItem.Visibility = Visibility.Collapsed;
+            StatusHintsSep.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        StatusHints.Text = string.Join("    ", statusParts);
+        StatusHintsItem.Visibility = Visibility.Visible;
+        StatusHintsSep.Visibility = Visibility.Visible;
     }
 
     private void RebuildCompare()

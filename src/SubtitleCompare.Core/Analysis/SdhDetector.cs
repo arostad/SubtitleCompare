@@ -3,19 +3,20 @@ using SubtitleCompare.Core.Models;
 
 namespace SubtitleCompare.Core.Analysis;
 
-public enum SdhEvidence
+public enum KindSource
 {
     None,
-    Metadata,
+    Flag,
     Title,
+    TitleAndFlag,
     Heuristic,
 }
 
-public readonly record struct SdhAssessment(bool IsLikelySdh, SdhEvidence Evidence, string Label);
+public readonly record struct KindAssessment(bool IsMatch, KindSource Source, string Label);
 
 /// <summary>
-/// SDH / HI detection: trust container flags and titles first, then a
-/// density of bracket/paren (and music-note) cues in the text.
+/// SDH / forced detection: trust container flags and titles first, then a
+/// density of bracket/paren (and music-note) cues for unmarked SDH.
 /// </summary>
 public static class SdhDetector
 {
@@ -23,21 +24,42 @@ public static class SdhDetector
         @"\[[^]]+\]|\([^)]+\)",
         RegexOptions.Compiled);
 
-    private static readonly Regex TitleHint = new(
+    private static readonly Regex SdhTitleHint = new(
         @"\b(sdh|s\.d\.h|cc|hi|hearing[- ]?impaired|hard of hearing|captions?)\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    public static SdhAssessment Evaluate(SubtitleTrackInfo? track, IReadOnlyList<SubtitleCue>? cues)
-    {
-        if (track?.IsHearingImpaired == true)
-            return new(true, SdhEvidence.Metadata, "SDH subtitle (marked in the file)");
+    private static readonly Regex ForcedTitleHint = new(
+        @"\b(forced|force)\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        if (track is not null && !string.IsNullOrWhiteSpace(track.Title) && TitleHint.IsMatch(track.Title))
-            return new(true, SdhEvidence.Title, "SDH subtitle (from track title)");
+    public static IReadOnlyList<string> Describe(SubtitleTrackInfo? track, IReadOnlyList<SubtitleCue>? cues)
+    {
+        var lines = new List<string>(2);
+        var sdh = EvaluateSdh(track, cues);
+        if (sdh.IsMatch)
+            lines.Add(sdh.Label);
+        var forced = EvaluateForced(track);
+        if (forced.IsMatch)
+            lines.Add(forced.Label);
+        return lines;
+    }
+
+    public static KindAssessment Evaluate(SubtitleTrackInfo? track, IReadOnlyList<SubtitleCue>? cues) =>
+        EvaluateSdh(track, cues);
+
+    public static KindAssessment EvaluateSdh(SubtitleTrackInfo? track, IReadOnlyList<SubtitleCue>? cues)
+    {
+        var fromFlag = track?.IsHearingImpaired == true;
+        var fromTitle = track is not null
+            && !string.IsNullOrWhiteSpace(track.Title)
+            && SdhTitleHint.IsMatch(track.Title);
+
+        if (fromFlag || fromTitle)
+            return Labeled("SDH subtitle", fromTitle, fromFlag);
 
         var list = cues ?? Array.Empty<SubtitleCue>();
         if (list.Count == 0)
-            return new(false, SdhEvidence.None, "");
+            return new(false, KindSource.None, "");
 
         var marked = 0;
         foreach (var cue in list)
@@ -49,9 +71,31 @@ public static class SdhDetector
         var ratio = marked / (double)list.Count;
         var likely = (marked >= 8 && ratio >= 0.10) || (marked >= 4 && ratio >= 0.25);
         if (!likely)
-            return new(false, SdhEvidence.None, "");
+            return new(false, KindSource.None, "");
 
-        return new(true, SdhEvidence.Heuristic, "Potential SDH subtitle detected");
+        return new(true, KindSource.Heuristic, "Potential SDH subtitle detected");
+    }
+
+    public static KindAssessment EvaluateForced(SubtitleTrackInfo? track)
+    {
+        var fromFlag = track?.IsForced == true;
+        var fromTitle = track is not null
+            && !string.IsNullOrWhiteSpace(track.Title)
+            && ForcedTitleHint.IsMatch(track.Title);
+
+        if (fromFlag || fromTitle)
+            return Labeled("Forced subtitle", fromTitle, fromFlag);
+
+        return new(false, KindSource.None, "");
+    }
+
+    private static KindAssessment Labeled(string kind, bool fromTitle, bool fromFlag)
+    {
+        if (fromTitle && fromFlag)
+            return new(true, KindSource.TitleAndFlag, $"{kind} (from track title & flag)");
+        if (fromTitle)
+            return new(true, KindSource.Title, $"{kind} (from track title)");
+        return new(true, KindSource.Flag, $"{kind} (from track flag)");
     }
 
     internal static bool IsMarkedCue(string? text)

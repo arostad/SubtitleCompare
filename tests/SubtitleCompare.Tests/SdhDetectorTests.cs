@@ -6,21 +6,41 @@ namespace SubtitleCompare.Tests;
 public class SdhDetectorTests
 {
     [Fact]
-    public void Metadata_flag_wins()
+    public void Hearing_impaired_flag_only()
     {
         var track = new SubtitleTrackInfo { IsHearingImpaired = true };
-        var a = SdhDetector.Evaluate(track, Cues("Just dialogue."));
-        Assert.True(a.IsLikelySdh);
-        Assert.Equal(SdhEvidence.Metadata, a.Evidence);
+        var a = SdhDetector.EvaluateSdh(track, Cues("Just dialogue."));
+        Assert.True(a.IsMatch);
+        Assert.Equal(KindSource.Flag, a.Source);
+        Assert.Equal("SDH subtitle (from track flag)", a.Label);
     }
 
     [Fact]
-    public void Title_SDH_is_detected()
+    public void Title_SDH_only()
     {
         var track = new SubtitleTrackInfo { Title = "English [SDH]" };
-        var a = SdhDetector.Evaluate(track, Cues("Hello."));
-        Assert.True(a.IsLikelySdh);
-        Assert.Equal(SdhEvidence.Title, a.Evidence);
+        var a = SdhDetector.EvaluateSdh(track, Cues("Hello."));
+        Assert.True(a.IsMatch);
+        Assert.Equal(KindSource.Title, a.Source);
+        Assert.Equal("SDH subtitle (from track title)", a.Label);
+    }
+
+    [Fact]
+    public void Title_and_hearing_impaired_flag()
+    {
+        var track = new SubtitleTrackInfo { Title = "English [SDH]", IsHearingImpaired = true };
+        var a = SdhDetector.EvaluateSdh(track, Cues("Hello."));
+        Assert.True(a.IsMatch);
+        Assert.Equal(KindSource.TitleAndFlag, a.Source);
+        Assert.Equal("SDH subtitle (from track title & flag)", a.Label);
+    }
+
+    [Fact]
+    public void Generic_title_with_hearing_impaired_flag_is_flag_only()
+    {
+        var track = new SubtitleTrackInfo { Title = "English", IsHearingImpaired = true };
+        var a = SdhDetector.EvaluateSdh(track, Cues("Hello."));
+        Assert.Equal("SDH subtitle (from track flag)", a.Label);
     }
 
     [Fact]
@@ -37,8 +57,8 @@ public class SdhDetectorTests
             "Yes.",
             "Alright.",
             "Come on.");
-        var a = SdhDetector.Evaluate(new SubtitleTrackInfo(), cues);
-        Assert.False(a.IsLikelySdh);
+        var a = SdhDetector.EvaluateSdh(new SubtitleTrackInfo(), cues);
+        Assert.False(a.IsMatch);
     }
 
     [Fact]
@@ -51,9 +71,9 @@ public class SdhDetectorTests
                 ? $"[gunfire] Get down {i}"
                 : $"Just talking {i}"));
         }
-        var a = SdhDetector.Evaluate(new SubtitleTrackInfo(), cues);
-        Assert.True(a.IsLikelySdh);
-        Assert.Equal(SdhEvidence.Heuristic, a.Evidence);
+        var a = SdhDetector.EvaluateSdh(new SubtitleTrackInfo(), cues);
+        Assert.True(a.IsMatch);
+        Assert.Equal(KindSource.Heuristic, a.Source);
         Assert.Equal("Potential SDH subtitle detected", a.Label);
     }
 
@@ -71,8 +91,53 @@ public class SdhDetectorTests
             "Wait.",
             "Now.",
             "Go.");
-        var a = SdhDetector.Evaluate(new SubtitleTrackInfo(), cues);
-        Assert.False(a.IsLikelySdh);
+        var a = SdhDetector.EvaluateSdh(new SubtitleTrackInfo(), cues);
+        Assert.False(a.IsMatch);
+    }
+
+    [Fact]
+    public void Forced_flag_only()
+    {
+        var track = new SubtitleTrackInfo { IsForced = true };
+        var a = SdhDetector.EvaluateForced(track);
+        Assert.True(a.IsMatch);
+        Assert.Equal(KindSource.Flag, a.Source);
+        Assert.Equal("Forced subtitle (from track flag)", a.Label);
+    }
+
+    [Fact]
+    public void Forced_title_only()
+    {
+        var track = new SubtitleTrackInfo { Title = "English Forced" };
+        var a = SdhDetector.EvaluateForced(track);
+        Assert.Equal("Forced subtitle (from track title)", a.Label);
+    }
+
+    [Fact]
+    public void Forced_title_and_flag()
+    {
+        var track = new SubtitleTrackInfo { Title = "Forced", IsForced = true };
+        var a = SdhDetector.EvaluateForced(track);
+        Assert.Equal("Forced subtitle (from track title & flag)", a.Label);
+    }
+
+    [Fact]
+    public void Describe_includes_both_SDH_and_forced()
+    {
+        var track = new SubtitleTrackInfo
+        {
+            Title = "English [SDH]",
+            IsHearingImpaired = true,
+            IsForced = true,
+        };
+        var lines = SdhDetector.Describe(track, Cues("Hello."));
+        Assert.Equal(
+            new[]
+            {
+                "SDH subtitle (from track title & flag)",
+                "Forced subtitle (from track flag)",
+            },
+            lines);
     }
 
     private static List<SubtitleCue> Cues(params string[] texts) =>
