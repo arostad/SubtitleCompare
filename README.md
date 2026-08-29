@@ -1,5 +1,9 @@
 # Subtitle Compare
 
+<p align="center">
+  <img src="src/SubtitleCompare.App/Assets/app.png" alt="Subtitle Compare" width="128">
+</p>
+
 Windows app for comparing subtitle tracks inside an MKV (or similar container). Drop a file on the window, pick up to three tracks, and compare them side by side.
 
 GitHub Actions builds the Windows exe on each push. The latest build is on the [Latest release](https://github.com/arostad/SubtitleCompare/releases/tag/latest).
