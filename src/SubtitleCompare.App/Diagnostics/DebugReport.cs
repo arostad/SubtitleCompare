@@ -76,6 +76,13 @@ internal static class DebugReport
     {
         sb.AppendLine("[tessdata]");
         ListFiles(sb, TessdataStore.TessdataDirectory, "*.traineddata", "TessdataDirectory");
+        var incoming = TesseractOcrEngine.DidOverrideTessdataPrefix
+            ? TesseractOcrEngine.IncomingTessdataPrefix
+            : Environment.GetEnvironmentVariable("TESSDATA_PREFIX");
+        sb.AppendLine($"TESSDATA_PREFIX: {Anon.EnvVar(incoming)}");
+        if (TesseractOcrEngine.DidOverrideTessdataPrefix)
+            sb.AppendLine($"TESSDATA_PREFIX process: {Anon.EnvVar(Environment.GetEnvironmentVariable("TESSDATA_PREFIX"))}");
+        sb.AppendLine($"engine init: {TesseractOcrEngine.LastSuccessfulInit ?? "not attempted"}");
         sb.AppendLine();
     }
 

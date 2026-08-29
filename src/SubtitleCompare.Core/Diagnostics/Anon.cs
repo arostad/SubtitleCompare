@@ -28,6 +28,12 @@ public static class Anon
         @"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    /// <summary>
+    /// <c>not set</c>, or <c>set</c> plus an anonymized value — for env vars in debug reports.
+    /// </summary>
+    public static string EnvVar(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "not set" : "set  " + Text(value);
+
     public static string Text(string? value)
     {
         if (string.IsNullOrEmpty(value))
