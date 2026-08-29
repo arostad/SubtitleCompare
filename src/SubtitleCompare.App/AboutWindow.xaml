@@ -49,12 +49,12 @@
                        RequestNavigate="OnNavigate"
                        Foreground="#4C8DFF">Andy Rostad</Hyperlink>
         </TextBlock>
-        <TextBlock Text="Copyright © 2026 Andy Rostad. All rights reserved."
-                   FontSize="12"
-                   TextAlignment="Center"
-                   TextWrapping="Wrap"
-                   HorizontalAlignment="Center"
-                   Margin="0,8,0,0"
-                   Foreground="{DynamicResource MutedFg}"/>
+        <TextBlock HorizontalAlignment="Center" Margin="0,8,0,0" FontSize="12"
+                   Foreground="{DynamicResource MutedFg}">
+            <Run Text="Released under the "/>
+            <Hyperlink NavigateUri="https://github.com/arostad/subtitle-compare/blob/main/LICENSE"
+                       RequestNavigate="OnNavigate"
+                       Foreground="#4C8DFF">MIT License</Hyperlink>
+        </TextBlock>
     </StackPanel>
 </Window>

@@ -11,13 +11,13 @@
     <LangVersion>latest</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <Version>1.1.02</Version>
-    <InformationalVersion>1.1.02</InformationalVersion>
-    <AssemblyVersion>1.1.2.0</AssemblyVersion>
-    <FileVersion>1.1.2.0</FileVersion>
+    <Version>1.1.03</Version>
+    <InformationalVersion>1.1.03</InformationalVersion>
+    <AssemblyVersion>1.1.3.0</AssemblyVersion>
+    <FileVersion>1.1.3.0</FileVersion>
     <Authors>Andy Rostad</Authors>
     <Company>Andy Rostad</Company>
-    <Copyright>Copyright © 2026 Andy Rostad. All rights reserved.</Copyright>
+    <Copyright>Copyright © 2026 Andy Rostad. MIT License.</Copyright>
     <Description>MKV subtitle comparison tool</Description>
     <Product>Subtitle Compare</Product>
   </PropertyGroup>

@@ -20,7 +20,7 @@ GitHub Actions builds the Windows exe on each push. The latest build is on the [
 - **In-app updates.** On launch (and from About → Check for updates) the app offers to download the new exe and restart.
 - **Text tracks only.** Image subtitles (PGS, VobSub, DVB) cannot be compared as text; the pane says so.
 
-Vibe coded by [Andy Rostad](https://github.com/arostad).
+Vibe coded by [Andy Rostad](https://github.com/arostad). Released under the [MIT License](LICENSE).
 
 ## Requirements
 
