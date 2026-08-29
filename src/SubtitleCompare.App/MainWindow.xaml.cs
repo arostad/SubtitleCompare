@@ -42,6 +42,8 @@ public partial class MainWindow : Window
     private int _refreshGeneration;
     private CancellationTokenSource? _refreshCts;
     private bool _suppressSlotEvents;
+    private readonly bool[] _ocrActive = new bool[3];
+    private readonly OcrProgress?[] _paneOcr = new OcrProgress?[3];
 
     public MainWindow()
     {
@@ -344,9 +346,13 @@ public partial class MainWindow : Window
         if (refresh == _refreshGeneration)
             _parsed[pane] = null;
 
+        _ocrActive[pane] = false;
+        _paneOcr[pane] = null;
+
         if (choice is null || choice.IsNone)
         {
             SetOverlay(pane, null);
+            UpdateSharedOcrStatus();
             return;
         }
 
@@ -355,6 +361,7 @@ public partial class MainWindow : Window
             if (choice.Track?.IsPgs != true)
             {
                 SetOverlay(pane, "This image subtitle format can't be OCR'd yet (PGS is supported).");
+                UpdateSharedOcrStatus();
                 return;
             }
 
@@ -362,6 +369,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        UpdateSharedOcrStatus();
         SetOverlay(pane, "Extracting…");
         Dispatcher.Invoke(() => StatusExtract.Text = $"Extracting track {choice.Track!.Index + 1}…");
 
@@ -377,7 +385,7 @@ public partial class MainWindow : Window
             if (gen != _loadGeneration || refresh != _refreshGeneration) return;
             _parsed[pane] = parsed;
             SetOverlay(pane, parsed.Cues.Count == 0 ? "This track has no cues." : null);
-            Dispatcher.Invoke(() => StatusExtract.Text = "Ready");
+            Dispatcher.Invoke(() => SetStatusExtract("Ready"));
         }
         catch (FfmpegNotFoundException ex)
         {
@@ -416,27 +424,45 @@ public partial class MainWindow : Window
         if (loader is null)
         {
             SetOverlay(pane, "OCR is not available in this session.");
+            UpdateSharedOcrStatus();
             return;
         }
 
+        _ocrActive[pane] = true;
+        _paneOcr[pane] = new OcrProgress(0, 0, "Starting OCR…");
         SetOverlay(pane, "Starting OCR…", busy: true);
-        Dispatcher.Invoke(() => StatusExtract.Text = "Starting OCR…");
+        UpdateSharedOcrStatus(pane);
 
-        var progress = new Progress<OcrProgress>(p =>
+        var ui = new Progress<OcrProgress>(p =>
         {
             if (gen != _loadGeneration || refresh != _refreshGeneration)
                 return;
+            _paneOcr[pane] = p;
             if (p.Total > 0)
                 SetOverlay(pane, p.Message, fraction: (double)p.Current / p.Total);
             else
                 SetOverlay(pane, p.Message, busy: true);
-            StatusExtract.Text = p.Message;
+            UpdateSharedOcrStatus(pane);
         });
+        var progress = new ThrottledProgress<OcrProgress>(
+            ui,
+            TimeSpan.FromMilliseconds(100),
+            immediate: p => p.Total <= 0 || p.Current == 0 || p.Current >= p.Total);
 
         try
         {
             var parsed = await Task.Run(
-                    () => loader.Load(file, track, progress, cancellationToken),
+                    () =>
+                    {
+                        try
+                        {
+                            return loader.Load(file, track, progress, cancellationToken);
+                        }
+                        finally
+                        {
+                            progress.Flush();
+                        }
+                    },
                     cancellationToken)
                 .ConfigureAwait(true);
             if (gen != _loadGeneration || refresh != _refreshGeneration)
@@ -449,11 +475,6 @@ public partial class MainWindow : Window
                 SetOverlay(pane, "OCR produced no readable text.");
             else
                 SetOverlay(pane, null);
-            Dispatcher.Invoke(() =>
-            {
-                StatusExtract.Text = "Ready";
-                HideStatusOcrBar();
-            });
         }
         catch (OperationCanceledException)
         {
@@ -468,7 +489,6 @@ public partial class MainWindow : Window
             {
                 StatusExtract.Text = "ffmpeg not found";
                 StatusError.Text = ex.Message;
-                HideStatusOcrBar();
             });
         }
         catch (Exception ex)
@@ -480,8 +500,16 @@ public partial class MainWindow : Window
             {
                 StatusExtract.Text = "OCR failed";
                 StatusError.Text = ex.Message;
-                HideStatusOcrBar();
             });
+        }
+        finally
+        {
+            if (gen == _loadGeneration && refresh == _refreshGeneration)
+            {
+                _ocrActive[pane] = false;
+                _paneOcr[pane] = null;
+                UpdateSharedOcrStatus();
+            }
         }
     }
 
@@ -824,15 +852,15 @@ public partial class MainWindow : Window
             {
                 _overlays[pane].Visibility = Visibility.Collapsed;
                 _overlayTexts[pane].Text = "";
-                _overlayBars[pane].Visibility = Visibility.Collapsed;
-                _overlayBars[pane].IsIndeterminate = false;
+                var bar = _overlayBars[pane];
+                bar.Visibility = Visibility.Collapsed;
+                bar.IsIndeterminate = false;
                 return;
             }
 
             _overlayTexts[pane].Text = message;
             _overlays[pane].Visibility = Visibility.Visible;
             ApplyProgress(_overlayBars[pane], fraction, busy);
-            ApplyStatusOcrBar(fraction, busy);
         });
     }
 
@@ -840,48 +868,95 @@ public partial class MainWindow : Window
     {
         if (fraction is double f)
         {
-            bar.IsIndeterminate = false;
-            bar.Value = Math.Clamp(f * 100, 0, 100);
+            var value = Math.Clamp(f * 100, 0, 100);
+            if (bar.IsIndeterminate)
+            {
+                bar.Visibility = Visibility.Collapsed;
+                bar.IsIndeterminate = false;
+            }
+            bar.Value = value;
             bar.Visibility = Visibility.Visible;
         }
         else if (busy)
         {
-            bar.IsIndeterminate = true;
+            if (!bar.IsIndeterminate)
+            {
+                bar.Visibility = Visibility.Collapsed;
+                bar.IsIndeterminate = true;
+            }
             bar.Visibility = Visibility.Visible;
         }
         else
         {
-            bar.IsIndeterminate = false;
             bar.Visibility = Visibility.Collapsed;
+            bar.IsIndeterminate = false;
         }
     }
 
-    private void ApplyStatusOcrBar(double? fraction, bool busy)
+    private void UpdateSharedOcrStatus(int? preferPane = null)
     {
-        if (fraction is double f)
+        if (!AnyOcrActive())
         {
-            StatusOcrBar.IsIndeterminate = false;
-            StatusOcrBar.Value = Math.Clamp(f * 100, 0, 100);
-            StatusOcrItem.Visibility = Visibility.Visible;
-            StatusOcrSep.Visibility = Visibility.Visible;
+            HideStatusOcrChrome();
+            if (StatusExtract.Text == "Working…")
+                StatusExtract.Text = "Ready";
+            return;
         }
-        else if (busy)
+
+        StatusExtract.Text = "Working…";
+
+        OcrProgress? recognize = null;
+        if (preferPane is int pane && _ocrActive[pane] && _paneOcr[pane] is { Total: > 0 } preferred)
+            recognize = preferred;
+        else
         {
-            StatusOcrBar.IsIndeterminate = true;
-            StatusOcrItem.Visibility = Visibility.Visible;
-            StatusOcrSep.Visibility = Visibility.Visible;
+            for (var i = 0; i < 3; i++)
+            {
+                if (_ocrActive[i] && _paneOcr[i] is { Total: > 0 } p)
+                    recognize = p;
+            }
         }
+
+        if (recognize is { } r)
+        {
+            StatusOcrText.Text = r.Message;
+            StatusOcrTextItem.Visibility = Visibility.Visible;
+            ApplyProgress(StatusOcrBar, (double)r.Current / r.Total, busy: false);
+        }
+        else
+        {
+            StatusOcrText.Text = "";
+            StatusOcrTextItem.Visibility = Visibility.Collapsed;
+            ApplyProgress(StatusOcrBar, null, busy: true);
+        }
+
+        StatusOcrItem.Visibility = Visibility.Visible;
+        StatusOcrSep.Visibility = Visibility.Visible;
     }
 
-    private void HideStatusOcrBar()
+    private void HideStatusOcrChrome()
     {
+        StatusOcrBar.Visibility = Visibility.Collapsed;
         StatusOcrBar.IsIndeterminate = false;
         StatusOcrItem.Visibility = Visibility.Collapsed;
+        StatusOcrText.Text = "";
+        StatusOcrTextItem.Visibility = Visibility.Collapsed;
         StatusOcrSep.Visibility = Visibility.Collapsed;
     }
 
+    private void SetStatusExtract(string text)
+    {
+        if (text == "Ready" && AnyOcrActive())
+            return;
+        StatusExtract.Text = text;
+    }
+
+    private bool AnyOcrActive() => _ocrActive[0] || _ocrActive[1] || _ocrActive[2];
+
     private void HideOverlays()
     {
+        Array.Clear(_ocrActive);
+        Array.Clear(_paneOcr);
         foreach (var o in _overlays)
             o.Visibility = Visibility.Collapsed;
         foreach (var bar in _overlayBars)
@@ -889,7 +964,7 @@ public partial class MainWindow : Window
             bar.Visibility = Visibility.Collapsed;
             bar.IsIndeterminate = false;
         }
-        HideStatusOcrBar();
+        HideStatusOcrChrome();
     }
 
     private void SetBanner(string? message)
@@ -915,6 +990,8 @@ public partial class MainWindow : Window
     private void ResetSession()
     {
         _refreshCts?.Cancel();
+        Array.Clear(_ocrActive);
+        Array.Clear(_paneOcr);
         _ocr = null;
         _extractor = null;
         _temp?.Dispose();
