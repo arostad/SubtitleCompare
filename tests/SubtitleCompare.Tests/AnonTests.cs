@@ -77,4 +77,22 @@ public class AnonTests
         Assert.Equal("", Anon.Text(null));
         Assert.Equal("", Anon.Text(""));
     }
+
+    [Fact]
+    public void EnvVar_reports_unset_or_anonymized_value()
+    {
+        Assert.Equal("not set", Anon.EnvVar(null));
+        Assert.Equal("not set", Anon.EnvVar(""));
+        Assert.Equal("not set", Anon.EnvVar("   "));
+
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(local))
+            return;
+
+        var text = Anon.EnvVar(Path.Combine(local, "Tesseract-OCR"));
+        Assert.StartsWith("set  ", text);
+        Assert.Contains("%LOCALAPPDATA%", text);
+        Assert.Contains("Tesseract-OCR", text);
+        Assert.DoesNotContain(local, text, StringComparison.OrdinalIgnoreCase);
+    }
 }
