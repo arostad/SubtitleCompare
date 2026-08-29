@@ -96,6 +96,22 @@ public class ThemePreferenceTests
         Assert.Equal(ThemePalette.Light.Keys.OrderBy(k => k), ThemePalette.Dark.Keys.OrderBy(k => k));
     }
 
+    [Fact]
+    public void Compare_view_keys_exist_in_both_palettes()
+    {
+        string[] keys =
+        [
+            "EqualFg", "RowBg",
+            "ChangedBg", "UniqueBg",
+            "MissingBg", "MissingFg", "MissingAccent",
+        ];
+        foreach (var key in keys)
+        {
+            Assert.Contains(key, ThemePalette.Light.Keys);
+            Assert.Contains(key, ThemePalette.Dark.Keys);
+        }
+    }
+
     private static string WriteTemp(string contents)
     {
         var path = Path.Combine(Path.GetTempPath(), "SubtitleCompare-theme-tests", Guid.NewGuid().ToString("N"), "theme.txt");
