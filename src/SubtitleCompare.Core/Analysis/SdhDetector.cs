@@ -92,10 +92,10 @@ public static class SdhDetector
     private static KindAssessment Labeled(string kind, bool fromTitle, bool fromFlag)
     {
         if (fromTitle && fromFlag)
-            return new(true, KindSource.TitleAndFlag, $"{kind} (from track title & flag)");
+            return new(true, KindSource.TitleAndFlag, $"{kind} (determined from track title & flag)");
         if (fromTitle)
-            return new(true, KindSource.Title, $"{kind} (from track title)");
-        return new(true, KindSource.Flag, $"{kind} (from track flag)");
+            return new(true, KindSource.Title, $"{kind} (determined from track title)");
+        return new(true, KindSource.Flag, $"{kind} (determined from track flag)");
     }
 
     internal static bool IsMarkedCue(string? text)

@@ -12,7 +12,7 @@ public class SdhDetectorTests
         var a = SdhDetector.EvaluateSdh(track, Cues("Just dialogue."));
         Assert.True(a.IsMatch);
         Assert.Equal(KindSource.Flag, a.Source);
-        Assert.Equal("SDH subtitle track (from track flag)", a.Label);
+        Assert.Equal("SDH subtitle track (determined from track flag)", a.Label);
     }
 
     [Fact]
@@ -22,7 +22,7 @@ public class SdhDetectorTests
         var a = SdhDetector.EvaluateSdh(track, Cues("Hello."));
         Assert.True(a.IsMatch);
         Assert.Equal(KindSource.Title, a.Source);
-        Assert.Equal("SDH subtitle track (from track title)", a.Label);
+        Assert.Equal("SDH subtitle track (determined from track title)", a.Label);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class SdhDetectorTests
         var a = SdhDetector.EvaluateSdh(track, Cues("Hello."));
         Assert.True(a.IsMatch);
         Assert.Equal(KindSource.TitleAndFlag, a.Source);
-        Assert.Equal("SDH subtitle track (from track title & flag)", a.Label);
+        Assert.Equal("SDH subtitle track (determined from track title & flag)", a.Label);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class SdhDetectorTests
     {
         var track = new SubtitleTrackInfo { Title = "English", IsHearingImpaired = true };
         var a = SdhDetector.EvaluateSdh(track, Cues("Hello."));
-        Assert.Equal("SDH subtitle track (from track flag)", a.Label);
+        Assert.Equal("SDH subtitle track (determined from track flag)", a.Label);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class SdhDetectorTests
         var a = SdhDetector.EvaluateForced(track);
         Assert.True(a.IsMatch);
         Assert.Equal(KindSource.Flag, a.Source);
-        Assert.Equal("Forced subtitle track (from track flag)", a.Label);
+        Assert.Equal("Forced subtitle track (determined from track flag)", a.Label);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class SdhDetectorTests
     {
         var track = new SubtitleTrackInfo { Title = "English Forced" };
         var a = SdhDetector.EvaluateForced(track);
-        Assert.Equal("Forced subtitle track (from track title)", a.Label);
+        Assert.Equal("Forced subtitle track (determined from track title)", a.Label);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class SdhDetectorTests
     {
         var track = new SubtitleTrackInfo { Title = "Forced", IsForced = true };
         var a = SdhDetector.EvaluateForced(track);
-        Assert.Equal("Forced subtitle track (from track title & flag)", a.Label);
+        Assert.Equal("Forced subtitle track (determined from track title & flag)", a.Label);
     }
 
     [Fact]
@@ -134,8 +134,8 @@ public class SdhDetectorTests
         Assert.Equal(
             new[]
             {
-                "SDH subtitle track (from track title & flag)",
-                "Forced subtitle track (from track flag)",
+                "SDH subtitle track (determined from track title & flag)",
+                "Forced subtitle track (determined from track flag)",
             },
             lines);
     }
