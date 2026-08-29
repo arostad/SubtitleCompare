@@ -81,7 +81,7 @@ public partial class MainWindow : Window
         if (dlg.Installed)
         {
             SetBanner(null);
-            StatusError.Text = "";
+            SetStatusError(null);
             StatusExtract.Text = "Ready";
             return;
         }
@@ -217,9 +217,8 @@ public partial class MainWindow : Window
         CompareGrid.RowDefinitions.Clear();
         SetBanner(null);
         Title = $"Subtitle Compare — {Path.GetFileName(path)}";
-        StatusFile.Text = Path.GetFileName(path);
-        StatusExtract.Text = "Probing subtitle tracks…";
-        StatusError.Text = "";
+        StatusExtract.Text = "Probing…";
+        SetStatusError(null);
         ClearTrackHints();
 
         IReadOnlyList<SubtitleTrackInfo> tracks;
@@ -231,7 +230,7 @@ public partial class MainWindow : Window
         {
             if (gen != _loadGeneration) return;
             StatusExtract.Text = "ffprobe not found";
-            StatusError.Text = "";
+            SetStatusError(null);
             ShowEmptyAfterFailure();
             OfferFfmpegIfMissing();
             if (FfmpegLocator.IsAvailable() && gen == _loadGeneration)
@@ -242,7 +241,7 @@ public partial class MainWindow : Window
         {
             if (gen != _loadGeneration) return;
             StatusExtract.Text = "Probe failed";
-            StatusError.Text = ex.Message;
+            SetStatusError(ex.Message);
             ShowEmptyAfterFailure();
             return;
         }
@@ -253,7 +252,7 @@ public partial class MainWindow : Window
         if (_tracks.Count == 0)
         {
             StatusExtract.Text = "No subtitle tracks";
-            StatusError.Text = "This file has no subtitle streams.";
+            SetStatusError("This file has no subtitle streams.");
             _suppressSlotEvents = true;
             PopulateEmptyCombos();
             _suppressSlotEvents = false;
@@ -329,7 +328,7 @@ public partial class MainWindow : Window
         var cts = new CancellationTokenSource();
         _refreshCts = cts;
         var refresh = ++_refreshGeneration;
-        StatusError.Text = "";
+        SetStatusError(null);
         var tasks = new List<Task>();
         for (var pane = 0; pane < 3; pane++)
             tasks.Add(LoadPaneAsync(pane, gen, refresh, cts.Token));
@@ -371,7 +370,7 @@ public partial class MainWindow : Window
 
         UpdateSharedOcrStatus();
         SetOverlay(pane, "Extracting…");
-        Dispatcher.Invoke(() => StatusExtract.Text = $"Extracting track {choice.Track!.Index + 1}…");
+        Dispatcher.Invoke(() => StatusExtract.Text = "Extracting…");
 
         var file = _currentFile!;
         var index = choice.Track!.Index;
@@ -395,7 +394,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 StatusExtract.Text = "ffmpeg not found";
-                StatusError.Text = ex.Message;
+                SetStatusError(ex.Message);
             });
         }
         catch (Exception ex)
@@ -406,7 +405,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 StatusExtract.Text = "Extract failed";
-                StatusError.Text = ex.Message;
+                SetStatusError(ex.Message);
             });
         }
     }
@@ -469,6 +468,7 @@ public partial class MainWindow : Window
                 return;
 
             _parsed[pane] = parsed;
+            FinishPaneOcr(pane);
             if (parsed.Cues.Count == 0)
                 SetOverlay(pane, "This track has no cues.");
             else if (parsed.Cues.All(c => string.IsNullOrWhiteSpace(c.Text)))
@@ -483,33 +483,31 @@ public partial class MainWindow : Window
         catch (FfmpegNotFoundException ex)
         {
             if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            FinishPaneOcr(pane);
             SetBanner(ex.Message);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
             {
                 StatusExtract.Text = "ffmpeg not found";
-                StatusError.Text = ex.Message;
+                SetStatusError(ex.Message);
             });
         }
         catch (Exception ex)
         {
             if (gen != _loadGeneration || refresh != _refreshGeneration) return;
             DebugLog.Error("pane load failed", ex);
+            FinishPaneOcr(pane);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
             {
                 StatusExtract.Text = "OCR failed";
-                StatusError.Text = ex.Message;
+                SetStatusError(ex.Message);
             });
         }
         finally
         {
             if (gen == _loadGeneration && refresh == _refreshGeneration)
-            {
-                _ocrActive[pane] = false;
-                _paneOcr[pane] = null;
-                UpdateSharedOcrStatus();
-            }
+                FinishPaneOcr(pane);
         }
     }
 
@@ -520,16 +518,10 @@ public partial class MainWindow : Window
             hint.Text = "";
             hint.Visibility = Visibility.Collapsed;
         }
-        StatusHints.Text = "";
-        StatusHintsItem.Visibility = Visibility.Collapsed;
-        StatusHintsSep.Visibility = Visibility.Collapsed;
     }
 
     private void UpdateSdhHints()
     {
-        var statusParts = new List<string>();
-        var letters = new[] { "A", "B", "C" };
-
         for (var pane = 0; pane < 3; pane++)
         {
             var hint = _hints[pane];
@@ -554,20 +546,7 @@ public partial class MainWindow : Window
 
             hint.Text = string.Join(Environment.NewLine, lines);
             hint.Visibility = Visibility.Visible;
-            statusParts.Add($"{letters[pane]}: {string.Join(" · ", lines)}");
         }
-
-        if (statusParts.Count == 0)
-        {
-            StatusHints.Text = "";
-            StatusHintsItem.Visibility = Visibility.Collapsed;
-            StatusHintsSep.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        StatusHints.Text = string.Join("    ", statusParts);
-        StatusHintsItem.Visibility = Visibility.Visible;
-        StatusHintsSep.Visibility = Visibility.Visible;
     }
 
     private void RebuildCompare()
@@ -893,6 +872,13 @@ public partial class MainWindow : Window
         }
     }
 
+    private void FinishPaneOcr(int pane)
+    {
+        _ocrActive[pane] = false;
+        _paneOcr[pane] = null;
+        UpdateSharedOcrStatus();
+    }
+
     private void UpdateSharedOcrStatus(int? preferPane = null)
     {
         if (!AnyOcrActive())
@@ -949,6 +935,14 @@ public partial class MainWindow : Window
         if (text == "Ready" && AnyOcrActive())
             return;
         StatusExtract.Text = text;
+    }
+
+    private void SetStatusError(string? text)
+    {
+        StatusError.Text = text ?? "";
+        StatusErrorSep.Visibility = string.IsNullOrWhiteSpace(text)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     private bool AnyOcrActive() => _ocrActive[0] || _ocrActive[1] || _ocrActive[2];

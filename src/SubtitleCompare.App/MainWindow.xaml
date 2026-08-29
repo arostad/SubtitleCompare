@@ -65,17 +65,7 @@
 
         <StatusBar DockPanel.Dock="Bottom" Padding="8,3">
             <StatusBarItem>
-                <TextBlock x:Name="StatusFile" Text="No file" Foreground="{DynamicResource EqualFg}"/>
-            </StatusBarItem>
-            <Separator/>
-            <StatusBarItem>
                 <TextBlock x:Name="StatusExtract" Text="Ready" Foreground="{DynamicResource MutedFg}"/>
-            </StatusBarItem>
-            <Separator x:Name="StatusHintsSep" Visibility="Collapsed"/>
-            <StatusBarItem x:Name="StatusHintsItem" Visibility="Collapsed">
-                <TextBlock x:Name="StatusHints" Text=""
-                           Foreground="{DynamicResource MutedFg}"
-                           TextTrimming="CharacterEllipsis"/>
             </StatusBarItem>
             <Separator x:Name="StatusOcrSep" Visibility="Collapsed"/>
             <StatusBarItem x:Name="StatusOcrTextItem" Visibility="Collapsed" Width="200">
@@ -89,7 +79,7 @@
                              Foreground="{DynamicResource SelectedBorder}"
                              Background="{DynamicResource ScrollTrack}"/>
             </StatusBarItem>
-            <Separator/>
+            <Separator x:Name="StatusErrorSep" Visibility="Collapsed"/>
             <StatusBarItem>
                 <TextBlock x:Name="StatusError" Text="" Foreground="{DynamicResource ErrorFg}"/>
             </StatusBarItem>
