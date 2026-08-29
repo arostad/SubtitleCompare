@@ -1,3 +1,4 @@
+using System.Globalization;
 using SubtitleCompare.Core.Models;
 using SubtitleCompare.Core.Pgs;
 
@@ -59,12 +60,19 @@ public static class OcrCueBuilder
         };
     }
 
-    private static string Format(int current, int total)
+    /// <summary>
+    /// Fixed-width OCR line so digit growth does not reflow the status bar.
+    /// Example: <c>OCR  12 of 400 (  3%)</c>.
+    /// </summary>
+    public static string Format(int current, int total)
     {
         if (total <= 0)
             return "OCR…";
         var pct = (int)Math.Round(100.0 * current / total);
-        return $"OCR {current} of {total}  ({pct}%)";
+        var width = total.ToString(CultureInfo.InvariantCulture).Length;
+        var cur = current.ToString(CultureInfo.InvariantCulture).PadLeft(width);
+        var pctText = pct.ToString(CultureInfo.InvariantCulture).PadLeft(3);
+        return $"OCR {cur} of {total} ({pctText}%)";
     }
 
     public static string Normalize(string? text)
