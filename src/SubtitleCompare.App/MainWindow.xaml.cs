@@ -40,12 +40,12 @@ public partial class MainWindow : Window
     private readonly List<bool> _rowIsDiff = new();
     private int _selectedRow = -1;
     private int _loadGeneration;
-    private int _refreshGeneration;
-    private CancellationTokenSource? _refreshCts;
     private bool _suppressSlotEvents;
-    private readonly bool[] _ocrActive = new bool[3];
-    private readonly bool[] _extracting = new bool[3];
-    private readonly OcrProgress?[] _paneOcr = new OcrProgress?[3];
+    private readonly CancellationTokenSource?[] _paneCts = new CancellationTokenSource?[3];
+    private readonly int[] _paneWorkId = new int[3];
+    private readonly PaneSelection?[] _settled = new PaneSelection?[3];
+    private readonly PaneSelection?[] _loading = new PaneSelection?[3];
+    private readonly BusyPane?[] _busy = new BusyPane?[3];
 
     public MainWindow()
     {
@@ -344,35 +344,96 @@ public partial class MainWindow : Window
         if (_currentFile is null || _extractor is null)
             return;
 
-        _refreshCts?.Cancel();
-        var cts = new CancellationTokenSource();
-        _refreshCts = cts;
-        var refresh = ++_refreshGeneration;
         SetStatusError(null);
         var tasks = new List<Task>();
+        var cleared = false;
         for (var pane = 0; pane < 3; pane++)
-            tasks.Add(LoadPaneAsync(pane, gen, refresh, cts.Token));
+        {
+            var selected = CurrentSelection(pane);
+            var action = PaneRefresh.Decide(selected, _settled[pane], BusyWithSameSelection(pane, selected));
+            switch (action)
+            {
+                case PaneRefreshAction.Keep:
+                    break;
+                case PaneRefreshAction.Clear:
+                    InvalidatePaneWork(pane);
+                    _parsed[pane] = null;
+                    _settled[pane] = PaneSelection.None;
+                    SetOverlay(pane, null);
+                    cleared = true;
+                    break;
+                case PaneRefreshAction.Load:
+                    tasks.Add(StartPaneLoadAsync(pane, gen, selected));
+                    break;
+            }
+        }
 
-        await Task.WhenAll(tasks);
-        if (gen != _loadGeneration || refresh != _refreshGeneration) return;
-        UpdateSdhHints();
-        RebuildCompare();
+        if (cleared)
+        {
+            UpdateSdhHints();
+            RebuildCompare();
+            UpdateSharedBusyStatus();
+        }
+
+        if (tasks.Count > 0)
+            await Task.WhenAll(tasks).ConfigureAwait(true);
     }
 
-    private async Task LoadPaneAsync(int pane, int gen, int refresh, CancellationToken cancellationToken)
+    private PaneSelection CurrentSelection(int pane)
     {
         var choice = _slots[pane].SelectedItem as TrackChoice;
-        if (refresh == _refreshGeneration)
-            _parsed[pane] = null;
+        if (choice is null || choice.IsNone || choice.Track is null)
+            return PaneSelection.None;
+        return PaneSelection.ForTrack(choice.Track.Index);
+    }
 
-        _ocrActive[pane] = false;
-        _extracting[pane] = false;
-        _paneOcr[pane] = null;
+    private bool BusyWithSameSelection(int pane, PaneSelection selected) =>
+        _busy[pane] is not null
+        && _loading[pane] is { } loading
+        && loading.Equals(selected);
 
+    private async Task StartPaneLoadAsync(int pane, int gen, PaneSelection selected)
+    {
+        var hadResult = _parsed[pane] is not null;
+        InvalidatePaneWork(pane);
+        var cts = new CancellationTokenSource();
+        _paneCts[pane] = cts;
+        var workId = ++_paneWorkId[pane];
+        _loading[pane] = selected;
+        _parsed[pane] = null;
+        if (hadResult)
+        {
+            UpdateSdhHints();
+            RebuildCompare();
+        }
+
+        try
+        {
+            await LoadPaneAsync(pane, gen, workId, cts.Token).ConfigureAwait(true);
+        }
+        finally
+        {
+            if (gen == _loadGeneration && workId == _paneWorkId[pane])
+            {
+                _loading[pane] = null;
+                _settled[pane] = selected;
+                ClearPaneBusy(pane);
+                UpdateSdhHints();
+                RebuildCompare();
+            }
+        }
+    }
+
+    private async Task LoadPaneAsync(
+        int pane,
+        int gen,
+        int workId,
+        CancellationToken cancellationToken)
+    {
+        var choice = _slots[pane].SelectedItem as TrackChoice;
         if (choice is null || choice.IsNone)
         {
             SetOverlay(pane, null);
-            UpdateSharedBusyStatus();
             return;
         }
 
@@ -381,17 +442,14 @@ public partial class MainWindow : Window
             if (choice.Track?.IsPgs != true)
             {
                 SetOverlay(pane, "This image subtitle format can't be OCR'd yet (PGS is supported).");
-                UpdateSharedBusyStatus();
                 return;
             }
 
-            await LoadImagePaneAsync(pane, gen, refresh, choice, cancellationToken).ConfigureAwait(true);
+            await LoadImagePaneAsync(pane, gen, workId, choice, cancellationToken).ConfigureAwait(true);
             return;
         }
 
-        _extracting[pane] = true;
-        SetOverlay(pane, "Extracting…");
-        UpdateSharedBusyStatus();
+        SetPaneBusy(pane, BusyKind.Extracting, LoadSteps.PullingTrack);
 
         var file = _currentFile!;
         var index = choice.Track!.Index;
@@ -399,16 +457,28 @@ public partial class MainWindow : Window
 
         try
         {
-            var path = await Task.Run(() => extractor.Extract(file, index)).ConfigureAwait(true);
-            if (gen != _loadGeneration || refresh != _refreshGeneration) return;
-            var parsed = await Task.Run(() => SubtitleParser.ParseFile(path)).ConfigureAwait(true);
-            if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            var path = await Task.Run(() => extractor.Extract(file, index), cancellationToken)
+                .ConfigureAwait(true);
+            if (!IsCurrentWork(pane, gen, workId))
+                return;
+
+            SetPaneBusy(pane, BusyKind.Parsing, LoadSteps.ReadingSrt);
+            var parsed = await Task.Run(() => SubtitleParser.ParseFile(path), cancellationToken)
+                .ConfigureAwait(true);
+            if (!IsCurrentWork(pane, gen, workId))
+                return;
+
             _parsed[pane] = parsed;
             SetOverlay(pane, parsed.Cues.Count == 0 ? "This track has no cues." : null);
         }
+        catch (OperationCanceledException)
+        {
+            // Stale work after the user changed this track or opened another file.
+        }
         catch (FfmpegNotFoundException ex)
         {
-            if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            if (!IsCurrentWork(pane, gen, workId))
+                return;
             SetBanner(ex.Message);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
@@ -419,7 +489,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            if (!IsCurrentWork(pane, gen, workId))
+                return;
             DebugLog.Error("pane load failed", ex);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
@@ -428,20 +499,12 @@ public partial class MainWindow : Window
                 SetStatusError(ex.Message);
             });
         }
-        finally
-        {
-            if (gen == _loadGeneration && refresh == _refreshGeneration)
-            {
-                _extracting[pane] = false;
-                UpdateSharedBusyStatus();
-            }
-        }
     }
 
     private async Task LoadImagePaneAsync(
         int pane,
         int gen,
-        int refresh,
+        int workId,
         TrackChoice choice,
         CancellationToken cancellationToken)
     {
@@ -451,25 +514,17 @@ public partial class MainWindow : Window
         if (loader is null)
         {
             SetOverlay(pane, "OCR is not available in this session.");
-            UpdateSharedBusyStatus();
             return;
         }
 
-        _ocrActive[pane] = true;
-        _paneOcr[pane] = new OcrProgress(0, 0, "Starting OCR…");
-        SetOverlay(pane, "Starting OCR…", busy: true);
-        UpdateSharedBusyStatus();
+        SetPaneBusy(pane, BusyKind.Extracting, LoadSteps.PullingTrack);
 
         var ui = new Progress<OcrProgress>(p =>
         {
-            if (gen != _loadGeneration || refresh != _refreshGeneration || !_ocrActive[pane])
+            if (!IsCurrentWork(pane, gen, workId) || _busy[pane] is null)
                 return;
-            _paneOcr[pane] = p;
-            if (p.Total > 0)
-                SetOverlay(pane, p.Message, fraction: (double)p.Current / p.Total);
-            else
-                SetOverlay(pane, p.Message, busy: true);
-            UpdateSharedBusyStatus();
+            var kind = BusyStatus.Classify(p.Current, p.Total, p.Message);
+            SetPaneBusy(pane, kind, p.Message, p.Current, p.Total);
         });
         var progress = new ThrottledProgress<OcrProgress>(
             ui,
@@ -492,11 +547,10 @@ public partial class MainWindow : Window
                     },
                     cancellationToken)
                 .ConfigureAwait(true);
-            if (gen != _loadGeneration || refresh != _refreshGeneration)
+            if (!IsCurrentWork(pane, gen, workId))
                 return;
 
             _parsed[pane] = parsed;
-            FinishPaneOcr(pane);
             if (parsed.Cues.Count == 0)
                 SetOverlay(pane, "This track has no cues.");
             else if (parsed.Cues.All(c => string.IsNullOrWhiteSpace(c.Text)))
@@ -506,12 +560,12 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
-            // Stale work after the user changed tracks or opened another file.
+            // Stale work after the user changed this track or opened another file.
         }
         catch (FfmpegNotFoundException ex)
         {
-            if (gen != _loadGeneration || refresh != _refreshGeneration) return;
-            FinishPaneOcr(pane);
+            if (!IsCurrentWork(pane, gen, workId))
+                return;
             SetBanner(ex.Message);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
@@ -522,9 +576,9 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            if (!IsCurrentWork(pane, gen, workId))
+                return;
             DebugLog.Error("pane load failed", ex);
-            FinishPaneOcr(pane);
             SetOverlay(pane, ex.Message);
             Dispatcher.Invoke(() =>
             {
@@ -532,11 +586,28 @@ public partial class MainWindow : Window
                 SetStatusError(ex.Message);
             });
         }
-        finally
+    }
+
+    private bool IsCurrentWork(int pane, int gen, int workId) =>
+        gen == _loadGeneration && workId == _paneWorkId[pane];
+
+    private void InvalidatePaneWork(int pane)
+    {
+        var old = _paneCts[pane];
+        _paneCts[pane] = null;
+        _paneWorkId[pane]++;
+        _loading[pane] = null;
+        _busy[pane] = null;
+        try
         {
-            if (gen == _loadGeneration && refresh == _refreshGeneration)
-                FinishPaneOcr(pane);
+            old?.Cancel();
         }
+        catch (ObjectDisposedException)
+        {
+            // already gone
+        }
+
+        old?.Dispose();
     }
 
     private void ClearTrackHints()
@@ -904,10 +975,19 @@ public partial class MainWindow : Window
         }
     }
 
-    private void FinishPaneOcr(int pane)
+    private void SetPaneBusy(int pane, BusyKind kind, string step, int current = 0, int total = 0)
     {
-        _ocrActive[pane] = false;
-        _paneOcr[pane] = null;
+        _busy[pane] = new BusyPane(pane, kind, current, total, step);
+        if (total > 0)
+            SetOverlay(pane, step, fraction: (double)current / total);
+        else
+            SetOverlay(pane, step, busy: true);
+        UpdateSharedBusyStatus();
+    }
+
+    private void ClearPaneBusy(int pane)
+    {
+        _busy[pane] = null;
         UpdateSharedBusyStatus();
     }
 
@@ -939,22 +1019,8 @@ public partial class MainWindow : Window
         var busy = new List<BusyPane>(3);
         for (var i = 0; i < 3; i++)
         {
-            if (_extracting[i])
-            {
-                busy.Add(new BusyPane(i, BusyKind.Extracting));
-                continue;
-            }
-
-            if (!_ocrActive[i])
-                continue;
-
-            if (_paneOcr[i] is { } ocr)
-            {
-                var kind = BusyStatus.Classify(ocr.Current, ocr.Total, ocr.Message);
-                busy.Add(new BusyPane(i, kind, ocr.Current, ocr.Total));
-            }
-            else
-                busy.Add(new BusyPane(i, BusyKind.Ocr));
+            if (_busy[i] is { } pane)
+                busy.Add(pane);
         }
 
         return busy;
@@ -999,15 +1065,20 @@ public partial class MainWindow : Window
             : Visibility.Visible;
     }
 
-    private bool AnyBusy() =>
-        _extracting[0] || _extracting[1] || _extracting[2]
-        || _ocrActive[0] || _ocrActive[1] || _ocrActive[2];
+    private bool AnyBusy()
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            if (_busy[i] is not null)
+                return true;
+        }
+
+        return false;
+    }
 
     private void HideOverlays()
     {
-        Array.Clear(_ocrActive);
-        Array.Clear(_extracting);
-        Array.Clear(_paneOcr);
+        Array.Clear(_busy);
         foreach (var o in _overlays)
             o.Visibility = Visibility.Collapsed;
         foreach (var bar in _overlayBars)
@@ -1040,10 +1111,11 @@ public partial class MainWindow : Window
 
     private void ResetSession()
     {
-        _refreshCts?.Cancel();
-        Array.Clear(_ocrActive);
-        Array.Clear(_extracting);
-        Array.Clear(_paneOcr);
+        for (var pane = 0; pane < 3; pane++)
+            InvalidatePaneWork(pane);
+        Array.Clear(_settled);
+        Array.Clear(_loading);
+        Array.Clear(_busy);
         _ocr = null;
         _extractor = null;
         _temp?.Dispose();

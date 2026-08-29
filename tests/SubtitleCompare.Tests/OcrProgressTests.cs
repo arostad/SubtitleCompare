@@ -5,23 +5,18 @@ namespace SubtitleCompare.Tests;
 public class OcrProgressTests
 {
     [Fact]
-    public void Format_pads_current_and_percent_to_a_stable_width()
+    public void Format_is_current_over_total()
     {
-        var a = OcrCueBuilder.Format(7, 412);
-        var b = OcrCueBuilder.Format(107, 412);
-        var c = OcrCueBuilder.Format(412, 412);
-
-        Assert.Equal("OCR   7 of 412 (  2%)", a);
-        Assert.Equal("OCR 107 of 412 ( 26%)", b);
-        Assert.Equal("OCR 412 of 412 (100%)", c);
-        Assert.Equal(a.Length, b.Length);
-        Assert.Equal(a.Length, c.Length);
+        Assert.Equal("OCR 7 / 412", OcrCueBuilder.Format(7, 412));
+        Assert.Equal("OCR 107 / 412", OcrCueBuilder.Format(107, 412));
+        Assert.Equal("OCR 412 / 412", OcrCueBuilder.Format(412, 412));
     }
 
     [Fact]
     public void Format_matches_the_status_bar_example()
     {
-        Assert.Equal("OCR  12 of 400 (  3%)", OcrCueBuilder.Format(12, 400));
+        Assert.Equal("OCR 12 / 400", OcrCueBuilder.Format(12, 400));
+        Assert.Equal("OCR 120 / 800", OcrCueBuilder.Format(120, 800));
         Assert.Equal("OCR…", OcrCueBuilder.Format(0, 0));
     }
 

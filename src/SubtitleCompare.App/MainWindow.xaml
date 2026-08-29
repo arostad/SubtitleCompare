@@ -93,7 +93,7 @@
                 <TextBlock x:Name="StatusExtract" Text="Ready" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedFg}"/>
             </StatusBarItem>
             <Separator x:Name="StatusOcrSep" Visibility="Collapsed"/>
-            <StatusBarItem x:Name="StatusOcrTextItem" Visibility="Collapsed" Width="240">
+            <StatusBarItem x:Name="StatusOcrTextItem" Visibility="Collapsed" Width="420">
                 <TextBlock x:Name="StatusOcrText"
                            TextTrimming="CharacterEllipsis"
                            Foreground="{DynamicResource MutedFg}"/>
@@ -204,7 +204,6 @@
                                     <TextBlock x:Name="OverlayAText" TextWrapping="Wrap"
                                                HorizontalAlignment="Center"
                                                TextAlignment="Center"
-                                               FontFamily="Consolas, Cascadia Mono, Courier New"
                                                Foreground="{DynamicResource MutedFg}"/>
                                     <ProgressBar x:Name="OverlayABar" Height="8" Width="180" Margin="0,12,0,0"
                                                  Minimum="0" Maximum="100" Visibility="Collapsed"
@@ -218,7 +217,6 @@
                                     <TextBlock x:Name="OverlayBText" TextWrapping="Wrap"
                                                HorizontalAlignment="Center"
                                                TextAlignment="Center"
-                                               FontFamily="Consolas, Cascadia Mono, Courier New"
                                                Foreground="{DynamicResource MutedFg}"/>
                                     <ProgressBar x:Name="OverlayBBar" Height="8" Width="180" Margin="0,12,0,0"
                                                  Minimum="0" Maximum="100" Visibility="Collapsed"
@@ -232,7 +230,6 @@
                                     <TextBlock x:Name="OverlayCText" TextWrapping="Wrap"
                                                HorizontalAlignment="Center"
                                                TextAlignment="Center"
-                                               FontFamily="Consolas, Cascadia Mono, Courier New"
                                                Foreground="{DynamicResource MutedFg}"/>
                                     <ProgressBar x:Name="OverlayCBar" Height="8" Width="180" Margin="0,12,0,0"
                                                  Minimum="0" Maximum="100" Visibility="Collapsed"

@@ -2,6 +2,7 @@ using System.IO;
 using System.Net.Http;
 using SubtitleCompare.Core.Diagnostics;
 using SubtitleCompare.Core.Ocr;
+using SubtitleCompare.Core.Ui;
 
 namespace SubtitleCompare.App.Ocr;
 
@@ -43,7 +44,7 @@ internal static class TessdataStore
                 return language;
             }
 
-            status?.Report($"Downloading {TessLanguage.DisplayName(language)} OCR data…");
+            status?.Report(LoadSteps.DownloadingOcrData(TessLanguage.DisplayName(language)));
             if (await TryDownloadAsync(language, cancellationToken).ConfigureAwait(false))
                 return language;
 
@@ -52,7 +53,7 @@ internal static class TessdataStore
                 if (HasLanguage(TessLanguage.Default))
                     return TessLanguage.Default;
 
-                status?.Report("Downloading English OCR data…");
+                status?.Report(LoadSteps.DownloadingOcrData("English"));
                 if (await TryDownloadAsync(TessLanguage.Default, cancellationToken).ConfigureAwait(false))
                     return TessLanguage.Default;
             }
