@@ -14,6 +14,7 @@ using SubtitleCompare.Core.Ffmpeg;
 using SubtitleCompare.Core.Models;
 using SubtitleCompare.Core.Ocr;
 using SubtitleCompare.Core.Parsing;
+using SubtitleCompare.Core.Ui;
 
 namespace SubtitleCompare.App;
 
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
 
     private readonly ComboBox[] _slots;
     private readonly TextBlock[] _hints;
+    private readonly ContentControl[] _pickHints;
     private readonly Border[] _overlays;
     private readonly TextBlock[] _overlayTexts;
     private readonly ProgressBar[] _overlayBars;
@@ -50,6 +52,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _slots = [SlotA, SlotB, SlotC];
         _hints = [HintA, HintB, HintC];
+        _pickHints = [PickHintA, PickHintB, PickHintC];
         _overlays = [OverlayA, OverlayB, OverlayC];
         _overlayTexts = [OverlayAText, OverlayBText, OverlayCText];
         _overlayBars = [OverlayABar, OverlayBBar, OverlayCBar];
@@ -262,6 +265,7 @@ public partial class MainWindow : Window
             PrevDiffButton.IsEnabled = false;
             NextDiffButton.IsEnabled = false;
             UpdateSdhHints();
+            UpdatePickTrackHints();
             return;
         }
 
@@ -270,6 +274,7 @@ public partial class MainWindow : Window
         SelectDefaultTracks();
         _suppressSlotEvents = false;
         StatusExtract.Text = $"{_tracks.Count} subtitle track{(_tracks.Count == 1 ? "" : "s")}";
+        UpdatePickTrackHints();
         await RefreshSlotsAsync(gen);
     }
 
@@ -316,6 +321,7 @@ public partial class MainWindow : Window
     {
         if (_suppressSlotEvents || _currentFile is null)
             return;
+        UpdatePickTrackHints();
         await RefreshSlotsAsync(_loadGeneration);
     }
 
@@ -546,6 +552,26 @@ public partial class MainWindow : Window
 
             hint.Text = string.Join(Environment.NewLine, lines);
             hint.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void HidePickTrackHints()
+    {
+        foreach (var hint in _pickHints)
+            hint.Visibility = Visibility.Collapsed;
+    }
+
+    private void UpdatePickTrackHints()
+    {
+        var fileLoaded = _currentFile is not null && LoadedState.Visibility == Visibility.Visible;
+        for (var pane = 0; pane < 3; pane++)
+        {
+            var choice = _slots[pane].SelectedItem as TrackChoice;
+            var trackSelected = choice is { IsNone: false };
+            var overlayUp = _overlays[pane].Visibility == Visibility.Visible;
+            _pickHints[pane].Visibility = PickTrackHintVisibility.ShouldShow(fileLoaded, trackSelected, overlayUp)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
     }
 
@@ -834,12 +860,14 @@ public partial class MainWindow : Window
                 var bar = _overlayBars[pane];
                 bar.Visibility = Visibility.Collapsed;
                 bar.IsIndeterminate = false;
+                UpdatePickTrackHints();
                 return;
             }
 
             _overlayTexts[pane].Text = message;
             _overlays[pane].Visibility = Visibility.Visible;
             ApplyProgress(_overlayBars[pane], fraction, busy);
+            UpdatePickTrackHints();
         });
     }
 
@@ -959,6 +987,7 @@ public partial class MainWindow : Window
             bar.IsIndeterminate = false;
         }
         HideStatusOcrChrome();
+        HidePickTrackHints();
     }
 
     private void SetBanner(string? message)
@@ -979,6 +1008,7 @@ public partial class MainWindow : Window
         Title = "Subtitle Compare";
         EmptyState.Visibility = Visibility.Visible;
         LoadedState.Visibility = Visibility.Collapsed;
+        HidePickTrackHints();
     }
 
     private void ResetSession()
