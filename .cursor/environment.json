@@ -1,0 +1,4 @@
+{
+  "name": "SubtitleCompare",
+  "install": "bash .cursor/install.sh"
+}
