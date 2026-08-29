@@ -23,7 +23,7 @@ if ($LASTEXITCODE -ne 0) {
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
-Write-Host "Downloading SubtitleCompare.exe from the private Latest release..."
+Write-Host "Downloading SubtitleCompare.exe from the Latest release..."
 gh release download latest --repo $Repo --pattern "SubtitleCompare.exe" --clobber --dir $InstallDir
 
 if (-not (Test-Path $ExePath) -or (Get-Item $ExePath).Length -lt 1MB) {

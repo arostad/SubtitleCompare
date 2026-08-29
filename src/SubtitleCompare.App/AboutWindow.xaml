@@ -44,7 +44,7 @@
                    Foreground="{DynamicResource MutedFg}"/>
         <TextBlock HorizontalAlignment="Center" Margin="0,18,0,0" FontSize="13"
                    Foreground="{DynamicResource MutedFg}">
-            <Run Text="Created by "/>
+            <Run Text="Vibe coded by "/>
             <Hyperlink NavigateUri="https://github.com/arostad"
                        RequestNavigate="OnNavigate"
                        Foreground="#4C8DFF">Andy Rostad</Hyperlink>
