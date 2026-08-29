@@ -1,9 +1,12 @@
+# Subtitle Compare
+
 <img src="src/SubtitleCompare.App/Assets/app.png" width="180" align="left" alt="Subtitle Compare">
 
-<p>
-<b>Subtitle Compare</b><br>
-Windows app for comparing subtitle tracks inside an MKV (or similar container). Drop a file on the window, pick up to three tracks, and compare them side by side.
-</p>
+<br><br>
+
+Windows app for comparing subtitle tracks inside an MKV (or similar container).<br>
+
+Drop a file on the window, pick up to three tracks, and compare them side by side.
 
 <br clear="all">
 
