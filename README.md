@@ -1,7 +1,7 @@
 <table>
 <tr>
-<td valign="top">
-<img src="src/SubtitleCompare.App/Assets/app.png" width="128" alt="Subtitle Compare">
+<td valign="top" width="380">
+<img src="src/SubtitleCompare.App/Assets/app.png" width="360" alt="Subtitle Compare">
 </td>
 <td valign="top">
 
