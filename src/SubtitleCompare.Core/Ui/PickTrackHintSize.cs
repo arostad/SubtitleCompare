@@ -1,14 +1,14 @@
 namespace SubtitleCompare.Core.Ui;
 
 /// <summary>
-/// Column-relative size for the pick-track arrow so it scales with the pane
-/// instead of staying locked at a fixed pixel width.
+/// Column-relative size for the pick-track arrow. Kept small so the hint
+/// is a quiet nudge rather than a wayfinding sign.
 /// </summary>
 public static class PickTrackHintSize
 {
-    public const double Fraction = 0.22;
-    public const double MinWidth = 36;
-    public const double MaxWidth = 96;
+    public const double Fraction = 0.12;
+    public const double MinWidth = 28;
+    public const double MaxWidth = 52;
 
     public static double ArrowWidth(double columnWidth)
     {
