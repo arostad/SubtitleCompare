@@ -79,7 +79,7 @@
                              Foreground="{DynamicResource SelectedBorder}"
                              Background="{DynamicResource ScrollTrack}"/>
             </StatusBarItem>
-            <Separator/>
+            <Separator x:Name="StatusErrorSep" Visibility="Collapsed"/>
             <StatusBarItem>
                 <TextBlock x:Name="StatusError" Text="" Foreground="{DynamicResource ErrorFg}"/>
             </StatusBarItem>

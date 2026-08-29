@@ -81,7 +81,7 @@ public partial class MainWindow : Window
         if (dlg.Installed)
         {
             SetBanner(null);
-            StatusError.Text = "";
+            SetStatusError(null);
             StatusExtract.Text = "Ready";
             return;
         }
@@ -218,7 +218,7 @@ public partial class MainWindow : Window
         SetBanner(null);
         Title = $"Subtitle Compare — {Path.GetFileName(path)}";
         StatusExtract.Text = "Probing…";
-        StatusError.Text = "";
+        SetStatusError(null);
         ClearTrackHints();
 
         IReadOnlyList<SubtitleTrackInfo> tracks;
@@ -230,7 +230,7 @@ public partial class MainWindow : Window
         {
             if (gen != _loadGeneration) return;
             StatusExtract.Text = "ffprobe not found";
-            StatusError.Text = "";
+            SetStatusError(null);
             ShowEmptyAfterFailure();
             OfferFfmpegIfMissing();
             if (FfmpegLocator.IsAvailable() && gen == _loadGeneration)
@@ -241,7 +241,7 @@ public partial class MainWindow : Window
         {
             if (gen != _loadGeneration) return;
             StatusExtract.Text = "Probe failed";
-            StatusError.Text = ex.Message;
+            SetStatusError(ex.Message);
             ShowEmptyAfterFailure();
             return;
         }
@@ -252,7 +252,7 @@ public partial class MainWindow : Window
         if (_tracks.Count == 0)
         {
             StatusExtract.Text = "No subtitle tracks";
-            StatusError.Text = "This file has no subtitle streams.";
+            SetStatusError("This file has no subtitle streams.");
             _suppressSlotEvents = true;
             PopulateEmptyCombos();
             _suppressSlotEvents = false;
@@ -328,7 +328,7 @@ public partial class MainWindow : Window
         var cts = new CancellationTokenSource();
         _refreshCts = cts;
         var refresh = ++_refreshGeneration;
-        StatusError.Text = "";
+        SetStatusError(null);
         var tasks = new List<Task>();
         for (var pane = 0; pane < 3; pane++)
             tasks.Add(LoadPaneAsync(pane, gen, refresh, cts.Token));
@@ -394,7 +394,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 StatusExtract.Text = "ffmpeg not found";
-                StatusError.Text = ex.Message;
+                SetStatusError(ex.Message);
             });
         }
         catch (Exception ex)
@@ -405,7 +405,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 StatusExtract.Text = "Extract failed";
-                StatusError.Text = ex.Message;
+                SetStatusError(ex.Message);
             });
         }
     }
@@ -489,7 +489,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 StatusExtract.Text = "ffmpeg not found";
-                StatusError.Text = ex.Message;
+                SetStatusError(ex.Message);
             });
         }
         catch (Exception ex)
@@ -501,7 +501,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 StatusExtract.Text = "OCR failed";
-                StatusError.Text = ex.Message;
+                SetStatusError(ex.Message);
             });
         }
         finally
@@ -935,6 +935,14 @@ public partial class MainWindow : Window
         if (text == "Ready" && AnyOcrActive())
             return;
         StatusExtract.Text = text;
+    }
+
+    private void SetStatusError(string? text)
+    {
+        StatusError.Text = text ?? "";
+        StatusErrorSep.Visibility = string.IsNullOrWhiteSpace(text)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     private bool AnyOcrActive() => _ocrActive[0] || _ocrActive[1] || _ocrActive[2];
