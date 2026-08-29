@@ -9,8 +9,14 @@ $ExePath = Join-Path $InstallDir "SubtitleCompare.exe"
 $TrustedHosts = @("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
 $DownloadHandler = [System.Net.Http.HttpClientHandler]::new()
 $DownloadHandler.AllowAutoRedirect = $false
+$DownloadHandler.SslProtocols = [System.Security.Authentication.SslProtocols]::Tls12
 $DownloadClient = [System.Net.Http.HttpClient]::new($DownloadHandler)
 $DownloadClient.Timeout = [TimeSpan]::FromMinutes(15)
+$DownloadClient.DefaultRequestHeaders.UserAgent.ParseAdd("SubtitleCompare")
+$DownloadClient.DefaultRequestHeaders.CacheControl = [System.Net.Http.Headers.CacheControlHeaderValue]::new()
+$DownloadClient.DefaultRequestHeaders.CacheControl.NoCache = $true
+$DownloadClient.DefaultRequestHeaders.CacheControl.NoStore = $true
+$DownloadClient.DefaultRequestHeaders.Pragma.ParseAdd("no-cache")
 
 function Get-TrustedResponse([Uri]$Uri) {
     for ($redirects = 0; $redirects -le 5; $redirects++) {
@@ -31,12 +37,15 @@ function Get-TrustedResponse([Uri]$Uri) {
     }
 }
 
-function Get-ReleaseChecksum {
-    $response = Get-TrustedResponse ([Uri]"$ReleaseBase/SubtitleCompare.exe.sha256")
+function Get-ReleaseChecksum([Uri]$Uri) {
+    $response = Get-TrustedResponse $Uri
     try {
-        $response.EnsureSuccessStatusCode()
+        [void]$response.EnsureSuccessStatusCode()
+        if ($response.Content.Headers.ContentLength -gt 1024) {
+            throw "Release checksum was not readable."
+        }
         $text = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult().Trim()
-        if ($text -notmatch '^(?<hash>[0-9a-fA-F]{64})(?:\s+[* ]?SubtitleCompare\.exe)?$') {
+        if ($text.Length -gt 1024 -or $text -notmatch '^(?<hash>[0-9a-fA-F]{64})(?:\s+[* ]?SubtitleCompare\.exe)?$') {
             throw "Release checksum was not readable."
         }
         return $Matches.hash.ToUpperInvariant()
@@ -48,7 +57,7 @@ function Get-ReleaseChecksum {
 function Save-TrustedDownload([Uri]$Uri, [string]$Path) {
     $response = Get-TrustedResponse $Uri
     try {
-        $response.EnsureSuccessStatusCode()
+        [void]$response.EnsureSuccessStatusCode()
         if ($response.Content.Headers.ContentLength -gt 1GB) {
             throw "Download was unexpectedly large."
         }
@@ -71,31 +80,42 @@ function Save-TrustedDownload([Uri]$Uri, [string]$Path) {
     }
 }
 
+function Save-VerifiedRelease([string]$Path) {
+    for ($attempt = 0; $attempt -lt 2; $attempt++) {
+        $verified = $false
+        try {
+            $nonce = [Guid]::NewGuid().ToString("N")
+            $expectedHash = Get-ReleaseChecksum ([Uri]"$ReleaseBase/SubtitleCompare.exe.sha256?t=$nonce")
+            Save-TrustedDownload ([Uri]"$ReleaseBase/SubtitleCompare.exe?t=$nonce") $Path
+            if ((Get-Item -LiteralPath $Path).Length -ge 1MB -and
+                (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -eq $expectedHash) {
+                $verified = $true
+                return
+            }
+        } finally {
+            if (-not $verified) {
+                Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    throw "The downloaded executable failed its integrity check."
+}
+
 Write-Host "Installing Subtitle Compare..."
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
 $PendingPath = Join-Path $InstallDir "SubtitleCompare.exe.$([Guid]::NewGuid().ToString('N')).new"
 Write-Host "Downloading SubtitleCompare.exe from the Latest release..."
-$ExpectedHash = Get-ReleaseChecksum
 try {
-    Save-TrustedDownload ([Uri]"$ReleaseBase/SubtitleCompare.exe") $PendingPath
-    if ((Get-FileHash -LiteralPath $PendingPath -Algorithm SHA256).Hash -ne $ExpectedHash) {
-        throw "The downloaded executable failed its integrity check."
+    Save-VerifiedRelease $PendingPath
+
+    if (Get-Process -Name SubtitleCompare -ErrorAction SilentlyContinue) {
+        throw "Subtitle Compare is running. Close it before installing."
     }
-} catch {
+    Move-Item -LiteralPath $PendingPath -Destination $ExePath -Force
+} finally {
     Remove-Item -LiteralPath $PendingPath -Force -ErrorAction SilentlyContinue
-    throw
 }
-
-if (-not (Test-Path $PendingPath) -or (Get-Item $PendingPath).Length -lt 1MB) {
-    throw "Download failed. SubtitleCompare.exe is missing or too small: $PendingPath"
-}
-
-if (Get-Process -Name SubtitleCompare -ErrorAction SilentlyContinue) {
-    Remove-Item -LiteralPath $PendingPath -Force -ErrorAction SilentlyContinue
-    throw "Subtitle Compare is running. Close it before installing."
-}
-Move-Item -LiteralPath $PendingPath -Destination $ExePath -Force
 
 if (-not (Test-Path $ExePath) -or (Get-Item $ExePath).Length -lt 1MB) {
     throw "Install failed. SubtitleCompare.exe is missing or too small in $InstallDir"

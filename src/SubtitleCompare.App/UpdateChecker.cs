@@ -148,6 +148,32 @@ internal static class UpdateChecker
         return Convert.ToHexString(SHA256.HashData(input));
     }
 
+    private static (string Path, string Hash) DownloadVerifiedExe(string directory)
+    {
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var expectedHash = ReadChecksum();
+            var pending = Path.Combine(directory, $"{ExeFileName}.{Guid.NewGuid():N}.new");
+            try
+            {
+                DownloadExe(pending);
+                if (new FileInfo(pending).Length < MinExeBytes)
+                    throw new InvalidOperationException("Download failed.");
+                if (string.Equals(Sha256(pending), expectedHash, StringComparison.OrdinalIgnoreCase))
+                    return (pending, expectedHash);
+            }
+            catch
+            {
+                try { File.Delete(pending); } catch { /* best effort */ }
+                throw;
+            }
+
+            try { File.Delete(pending); } catch { /* best effort */ }
+        }
+
+        throw new InvalidOperationException("The downloaded update failed its integrity check.");
+    }
+
     internal static bool LooksLikeSingleFileExtractPath(string path)
     {
         var full = Path.GetFullPath(path);
@@ -224,21 +250,7 @@ internal static class UpdateChecker
         var dir = Path.GetDirectoryName(exe)
             ?? throw new InvalidOperationException("Could not resolve the install directory.");
         Directory.CreateDirectory(dir);
-        var pending = Path.Combine(dir, $"{ExeFileName}.{Guid.NewGuid():N}.new");
-        var expectedHash = ReadChecksum();
-        try
-        {
-            DownloadExe(pending);
-            if (new FileInfo(pending).Length < MinExeBytes)
-                throw new InvalidOperationException("Download failed.");
-            if (!string.Equals(Sha256(pending), expectedHash, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("The downloaded update failed its integrity check.");
-        }
-        catch
-        {
-            try { File.Delete(pending); } catch { /* best effort */ }
-            throw;
-        }
+        var (pending, expectedHash) = DownloadVerifiedExe(dir);
 
         var pid = Environment.ProcessId;
         var errorFile = Path.Combine(dir, "update-error.txt");
@@ -255,7 +267,15 @@ internal static class UpdateChecker
                 if ((Get-FileHash -LiteralPath $pending -Algorithm SHA256).Hash -ne $expectedHash) {
                     throw "The downloaded update failed its integrity check."
                 }
-                Move-Item -LiteralPath $pending -Destination $exe -Force
+                for ($attempt = 0; $attempt -lt 8; $attempt++) {
+                    try {
+                        Move-Item -LiteralPath $pending -Destination $exe -Force
+                        break
+                    } catch {
+                        if ($attempt -eq 7) { throw }
+                        Start-Sleep -Seconds 1
+                    }
+                }
                 if (-not (Test-Path -LiteralPath $exe) -or (Get-Item -LiteralPath $exe).Length -lt 1MB) {
                     throw "The updated executable is missing or too small."
                 }
@@ -263,6 +283,9 @@ internal static class UpdateChecker
                 Start-Process -FilePath $exe
             } catch {
                 "Update failed: $($_.Exception.Message)" | Set-Content -LiteralPath $errorFile
+                if (Test-Path -LiteralPath $exe) {
+                    Start-Process -FilePath $exe
+                }
             } finally {
                 Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
             }
@@ -288,6 +311,16 @@ internal static class UpdateChecker
         start.Environment["SUBTITLECOMPARE_UPDATE_SHA256"] = expectedHash;
         start.Environment["SUBTITLECOMPARE_UPDATE_ERROR"] = errorFile;
         start.Environment["SUBTITLECOMPARE_UPDATE_PID"] = pid.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        Process.Start(start);
+        try
+        {
+            if (Process.Start(start) is null)
+                throw new InvalidOperationException("Could not start the update helper.");
+        }
+        catch
+        {
+            try { File.Delete(script); } catch { /* best effort */ }
+            try { File.Delete(pending); } catch { /* best effort */ }
+            throw;
+        }
     }
 }
