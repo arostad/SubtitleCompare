@@ -1,10 +1,8 @@
+# Subtitle Compare
+
 <img src="src/SubtitleCompare.App/Assets/app.png" width="180" align="left" alt="Subtitle Compare">
 
-<p>
-<b>Subtitle Compare</b><br>
-<img src="docs/readme-title-rule.svg" width="600" height="1" alt=""><br>
 Windows app for comparing subtitle tracks inside an MKV (or similar container). Drop a file on the window, pick up to three tracks, and compare them side by side.
-</p>
 
 <br clear="all">
 
