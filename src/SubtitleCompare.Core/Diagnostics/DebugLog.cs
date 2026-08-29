@@ -40,7 +40,7 @@ public static class DebugLog
     {
         var parts = new List<string>();
         for (var ex = exception; ex is not null; ex = ex.InnerException)
-            parts.Add($"{ex.GetType().Name}: {Anon.Text(ex.Message)}");
+            parts.Add(ex.GetType().Name);
         return string.Join(" | ", parts);
     }
 }
