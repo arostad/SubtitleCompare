@@ -23,7 +23,7 @@ internal sealed class ImageSubtitleLoader
     public ParsedSubtitles Load(
         string filePath,
         SubtitleTrackInfo track,
-        IProgress<string> status,
+        IProgress<OcrProgress> status,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
@@ -33,11 +33,11 @@ internal sealed class ImageSubtitleLoader
         if (_cache.TryGetValue(key, out var cached))
             return cached;
 
-        status.Report("Extracting image subtitles…");
+        status.Report(Busy("Extracting image subtitles…"));
         var sup = _extractor.ExtractRaw(filePath, track.Index);
         cancellationToken.ThrowIfCancellationRequested();
 
-        status.Report("Parsing PGS…");
+        status.Report(Busy("Parsing PGS…"));
         var presentations = PgsParser.ParseFile(sup);
         if (presentations.Count == 0)
         {
@@ -47,16 +47,19 @@ internal sealed class ImageSubtitleLoader
         }
 
         var requested = TessLanguage.FromTag(track.Language);
-        var language = TessdataStore.EnsureLanguageAsync(requested, status, cancellationToken)
+        var language = TessdataStore.EnsureLanguageAsync(
+                requested,
+                new Progress<string>(msg => status.Report(Busy(msg))),
+                cancellationToken)
             .GetAwaiter().GetResult();
         cancellationToken.ThrowIfCancellationRequested();
 
-        status.Report("Starting OCR…");
+        status.Report(Busy("Starting OCR…"));
         using var engine = TesseractOcrEngine.Create(TessdataStore.DataPrefix, language);
         var parsed = OcrCueBuilder.Build(
             presentations,
             engine.Recognize,
-            new Progress<OcrProgress>(p => status.Report(p.Message)),
+            status,
             cancellationToken);
 
         parsed = new ParsedSubtitles
@@ -68,6 +71,8 @@ internal sealed class ImageSubtitleLoader
         _cache[key] = parsed;
         return parsed;
     }
+
+    private static OcrProgress Busy(string message) => new(0, 0, message);
 
     private static string CacheKey(string filePath, int subtitleStreamIndex)
     {

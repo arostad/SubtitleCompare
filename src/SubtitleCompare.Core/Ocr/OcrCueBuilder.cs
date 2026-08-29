@@ -19,7 +19,7 @@ public static class OcrCueBuilder
 
         var cues = new List<SubtitleCue>(presentations.Count);
         var total = presentations.Count;
-        progress?.Report(new OcrProgress(0, total, total == 0 ? "OCR 0/0…" : $"OCR 0/{total}…"));
+        progress?.Report(new OcrProgress(0, total, Format(0, total)));
 
         for (var i = 0; i < presentations.Count; i++)
         {
@@ -49,7 +49,7 @@ public static class OcrCueBuilder
                 Text = text,
                 RawText = text,
             });
-            progress?.Report(new OcrProgress(i + 1, total, $"OCR {i + 1}/{total}…"));
+            progress?.Report(new OcrProgress(i + 1, total, Format(i + 1, total)));
         }
 
         return new ParsedSubtitles
@@ -57,6 +57,14 @@ public static class OcrCueBuilder
             Format = "ocr-pgs",
             Cues = cues,
         };
+    }
+
+    private static string Format(int current, int total)
+    {
+        if (total <= 0)
+            return "OCR…";
+        var pct = (int)Math.Round(100.0 * current / total);
+        return $"OCR {current} of {total}  ({pct}%)";
     }
 
     public static string Normalize(string? text)

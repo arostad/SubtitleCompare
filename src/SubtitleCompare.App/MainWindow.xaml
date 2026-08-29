@@ -77,6 +77,13 @@
                            Foreground="{DynamicResource MutedFg}"
                            TextTrimming="CharacterEllipsis"/>
             </StatusBarItem>
+            <Separator x:Name="StatusOcrSep" Visibility="Collapsed"/>
+            <StatusBarItem x:Name="StatusOcrItem" Visibility="Collapsed" Width="140">
+                <ProgressBar x:Name="StatusOcrBar" Height="8"
+                             Minimum="0" Maximum="100"
+                             Foreground="{DynamicResource SelectedBorder}"
+                             Background="{DynamicResource ScrollTrack}"/>
+            </StatusBarItem>
             <Separator/>
             <StatusBarItem>
                 <TextBlock x:Name="StatusError" Text="" Foreground="{DynamicResource ErrorFg}"/>
@@ -173,21 +180,39 @@
                             </Grid.ColumnDefinitions>
                             <Border x:Name="OverlayA" Grid.Column="0" Visibility="Collapsed"
                                     Background="{DynamicResource OverlayBg}" Margin="4">
-                                <TextBlock x:Name="OverlayAText" TextWrapping="Wrap" Margin="16"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           TextAlignment="Center" Foreground="{DynamicResource MutedFg}"/>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16" MaxWidth="280">
+                                    <TextBlock x:Name="OverlayAText" TextWrapping="Wrap"
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center" Foreground="{DynamicResource MutedFg}"/>
+                                    <ProgressBar x:Name="OverlayABar" Height="8" Width="180" Margin="0,12,0,0"
+                                                 Minimum="0" Maximum="100" Visibility="Collapsed"
+                                                 Foreground="{DynamicResource SelectedBorder}"
+                                                 Background="{DynamicResource ScrollTrack}"/>
+                                </StackPanel>
                             </Border>
                             <Border x:Name="OverlayB" Grid.Column="2" Visibility="Collapsed"
                                     Background="{DynamicResource OverlayBg}" Margin="4">
-                                <TextBlock x:Name="OverlayBText" TextWrapping="Wrap" Margin="16"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           TextAlignment="Center" Foreground="{DynamicResource MutedFg}"/>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16" MaxWidth="280">
+                                    <TextBlock x:Name="OverlayBText" TextWrapping="Wrap"
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center" Foreground="{DynamicResource MutedFg}"/>
+                                    <ProgressBar x:Name="OverlayBBar" Height="8" Width="180" Margin="0,12,0,0"
+                                                 Minimum="0" Maximum="100" Visibility="Collapsed"
+                                                 Foreground="{DynamicResource SelectedBorder}"
+                                                 Background="{DynamicResource ScrollTrack}"/>
+                                </StackPanel>
                             </Border>
                             <Border x:Name="OverlayC" Grid.Column="4" Visibility="Collapsed"
                                     Background="{DynamicResource OverlayBg}" Margin="4">
-                                <TextBlock x:Name="OverlayCText" TextWrapping="Wrap" Margin="16"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           TextAlignment="Center" Foreground="{DynamicResource MutedFg}"/>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16" MaxWidth="280">
+                                    <TextBlock x:Name="OverlayCText" TextWrapping="Wrap"
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center" Foreground="{DynamicResource MutedFg}"/>
+                                    <ProgressBar x:Name="OverlayCBar" Height="8" Width="180" Margin="0,12,0,0"
+                                                 Minimum="0" Maximum="100" Visibility="Collapsed"
+                                                 Foreground="{DynamicResource SelectedBorder}"
+                                                 Background="{DynamicResource ScrollTrack}"/>
+                                </StackPanel>
                             </Border>
                         </Grid>
                     </Grid>
