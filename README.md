@@ -24,7 +24,7 @@ Drop a file on the window, pick up to three tracks, and compare them side by sid
 - **Forced.** Same idea for forced tracks (`Forced subtitle track (determined from track flag)`, and so on). A track can be both SDH and forced.
 - **Light and dark.** Sun/moon button next to About toggles Light/Dark, overrides the OS, and persists in `%LOCALAPPDATA%\SubtitleCompare\theme.txt`. First run follows Windows until you click.
 - **In-app updates.** On launch (and from About → Check for updates) the app offers to download the new exe and restart.
-- **Image-track OCR.** PGS (Blu-ray) tracks are OCR'd on device with Tesseract and then compared like any text track. The first time a language is used, the app downloads that trained data into `%LOCALAPPDATA%\SubtitleCompare\tessdata`. Results can be imperfect, especially with stylized or outlined fonts. VobSub and DVB are still image-only.
+- **Image-track OCR.** PGS (Blu-ray) tracks are OCR'd on device with Tesseract (a few cues at a time, so a long track does not sit on one core) and then compared like any text track. The first time a language is used, the app downloads that trained data into `%LOCALAPPDATA%\SubtitleCompare\tessdata`. Results can be imperfect, especially with stylized or outlined fonts. VobSub and DVB are still image-only.
 - **Busy status.** Changing one track leaves the other columns alone, and the grid updates as soon as a pane lands. While a column is busy, the overlay and the bottom bar say what it is doing (pulling a track, reading an SRT, parsing PGS, downloading OCR data, OCR 120 / 800) and name the busy panes A/B/C, plus a combined percent when those columns have real totals. Idle stays the short row/diff count.
 
 Vibe coded by [Andy Rostad](https://github.com/arostad). Released under the [MIT License](LICENSE).
@@ -51,7 +51,7 @@ irm https://raw.githubusercontent.com/arostad/SubtitleCompare/main/scripts/Insta
 powershell -NoProfile -ExecutionPolicy Bypass -File $env:TEMP\Install-SubtitleCompare.ps1
 ```
 
-That downloads `SubtitleCompare.exe` (about 140 MB) to `%LOCALAPPDATA%\SubtitleCompare` and creates Desktop and Start Menu shortcuts.
+That downloads `SubtitleCompare.exe` (about 160 MB) to `%LOCALAPPDATA%\SubtitleCompare` and creates Desktop and Start Menu shortcuts.
 
 Or grab `SubtitleCompare.exe` from the [Latest release](https://github.com/arostad/SubtitleCompare/releases/tag/latest) yourself.
 

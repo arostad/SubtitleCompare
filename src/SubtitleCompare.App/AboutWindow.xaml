@@ -20,7 +20,7 @@
                    HorizontalAlignment="Center"
                    Foreground="{DynamicResource EqualFg}"/>
         <TextBlock x:Name="VersionText"
-                   Text="Version 1.1.09"
+                   Text="Version 1.1.23"
                    FontSize="13"
                    HorizontalAlignment="Center"
                    Margin="0,6,0,0"
@@ -63,7 +63,7 @@
         <TextBlock HorizontalAlignment="Center" Margin="0,8,0,0" FontSize="12"
                    Foreground="{DynamicResource MutedFg}">
             <Run Text="Released under the "/>
-            <Hyperlink NavigateUri="https://github.com/arostad/subtitle-compare/blob/main/LICENSE"
+            <Hyperlink NavigateUri="https://github.com/arostad/SubtitleCompare/blob/main/LICENSE"
                        RequestNavigate="OnNavigate"
                        Foreground="#4C8DFF">MIT License</Hyperlink>
         </TextBlock>

@@ -16,9 +16,9 @@ internal sealed class UpdateInfo
 internal static class UpdateChecker
 {
     private const string VersionUrl =
-        "https://github.com/arostad/subtitle-compare/releases/download/latest/version.txt";
+        "https://github.com/arostad/SubtitleCompare/releases/download/latest/version.txt";
     private const string ExeUrl =
-        "https://github.com/arostad/subtitle-compare/releases/download/latest/SubtitleCompare.exe";
+        "https://github.com/arostad/SubtitleCompare/releases/download/latest/SubtitleCompare.exe";
     private const string ExeFileName = "SubtitleCompare.exe";
     private const long MinExeBytes = 1_000_000;
 
@@ -135,7 +135,7 @@ internal static class UpdateChecker
 
         var pid = Environment.ProcessId;
         var errorFile = Path.Combine(dir, "update-error.txt");
-        var bat = Path.Combine(Path.GetTempPath(), $"subtitle-compare-update-{pid}.cmd");
+        var bat = Path.Combine(Path.GetTempPath(), $"SubtitleCompare-update-{pid}.cmd");
         var batText = $"""
             @echo off
             setlocal EnableDelayedExpansion

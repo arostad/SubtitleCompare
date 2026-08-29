@@ -8,8 +8,7 @@ using Microsoft.Win32;
 using SubtitleCompare.App.Ocr;
 using SubtitleCompare.Core.Analysis;
 using SubtitleCompare.Core.Diagnostics;
-using SubtitleCompare.Core.Alignment;
-using SubtitleCompare.Core.Diff;
+using SubtitleCompare.Core.Compare;
 using SubtitleCompare.Core.Ffmpeg;
 using SubtitleCompare.Core.Models;
 using SubtitleCompare.Core.Ocr;
@@ -46,6 +45,8 @@ public partial class MainWindow : Window
     private readonly PaneSelection?[] _settled = new PaneSelection?[3];
     private readonly PaneSelection?[] _loading = new PaneSelection?[3];
     private readonly BusyPane?[] _busy = new BusyPane?[3];
+    private CompareGridModel? _compareModel;
+    private int _compareGeneration;
 
     public MainWindow()
     {
@@ -96,7 +97,9 @@ public partial class MainWindow : Window
     {
         Theme.ApplyCaption(this);
         RefreshThemeToggle();
-        if (_rows.Count > 0)
+        if (_compareModel is { Rows.Count: > 0 } model)
+            PaintCompare(model);
+        else if (_rows.Count > 0)
             RebuildCompare();
     }
 
@@ -650,99 +653,98 @@ public partial class MainWindow : Window
 
     private void RebuildCompare()
     {
+        var gen = ++_compareGeneration;
+        var snapshot = (ParsedSubtitles?[])_parsed.Clone();
+        if (snapshot[0] is null && snapshot[1] is null && snapshot[2] is null)
+        {
+            ApplyCompareModel(CompareGridBuilder.Build(snapshot), gen);
+            return;
+        }
+
+        _ = FinishCompareAsync(snapshot, gen);
+    }
+
+    private async Task FinishCompareAsync(ParsedSubtitles?[] snapshot, int gen)
+    {
+        CompareGridModel model;
+        try
+        {
+            model = await Task.Run(() => CompareGridBuilder.Build(snapshot)).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Error("compare rebuild failed", ex);
+            return;
+        }
+
+        ApplyCompareModel(model, gen);
+    }
+
+    private void ApplyCompareModel(CompareGridModel model, int gen)
+    {
+        if (gen != _compareGeneration)
+            return;
+        PaintCompare(model);
+    }
+
+    private void PaintCompare(CompareGridModel model)
+    {
+        _compareModel = model;
+        CompareGrid.Visibility = Visibility.Collapsed;
         CompareGrid.Children.Clear();
         CompareGrid.RowDefinitions.Clear();
         _rowBorders.Clear();
         _rowIsDiff.Clear();
         _selectedRow = -1;
 
-        var cuesA = _parsed[0]?.Cues;
-        var cuesB = _parsed[1]?.Cues;
-        var cuesC = _parsed[2]?.Cues;
-        var active = new[]
-        {
-            _parsed[0] is not null,
-            _parsed[1] is not null,
-            _parsed[2] is not null,
-        };
-
-        if (!active[0] && !active[1] && !active[2])
+        var active = model.Active;
+        var rows = model.Rows;
+        if (rows.Count == 0)
         {
             _rows = Array.Empty<AlignedRow>();
             PrevDiffButton.IsEnabled = false;
             NextDiffButton.IsEnabled = false;
+            CompareGrid.Visibility = Visibility.Visible;
             if (!AnyBusy())
                 SetIdleStatusText();
             return;
         }
 
-        _rows = CueAligner.Align(cuesA, cuesB, cuesC);
-
-        for (var i = 0; i < _rows.Count; i++)
+        var aligned = new AlignedRow[rows.Count];
+        var gutter = Theme.Get("GutterBg");
+        for (var i = 0; i < rows.Count; i++)
         {
+            var item = rows[i];
+            aligned[i] = item.Row;
+            _rowIsDiff.Add(item.IsDiff);
             CompareGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var row = _rows[i];
-            var texts = new string?[3];
-            var present = new bool[3];
-            for (var p = 0; p < 3; p++)
-            {
-                if (!active[p])
-                    continue;
-                var cue = row[p];
-                present[p] = cue is not null;
-                texts[p] = cue?.Text;
-            }
-
-            var selectedTexts = Enumerable.Range(0, 3)
-                .Where(p => active[p] && present[p])
-                .Select(p => texts[p] ?? "")
-                .ToArray();
-
-            IReadOnlyList<IReadOnlyList<DiffSegment>>? diffs = null;
-            if (selectedTexts.Length >= 2)
-                diffs = TextDiffer.Compare(selectedTexts);
-
-            var diffByPane = new IReadOnlyList<DiffSegment>?[3];
-            if (diffs is not null)
-            {
-                var di = 0;
-                for (var p = 0; p < 3; p++)
-                {
-                    if (active[p] && present[p])
-                        diffByPane[p] = diffs[di++];
-                }
-            }
-
-            var anyMissing = active.Select((on, p) => on && !present[p] && active.Count(x => x) > 1).Any(x => x);
-            var textDiffers = diffs is not null && TextDiffer.RowHasDifference(diffs);
-            var isDiff = textDiffers || anyMissing || (active.Count(x => x) > 1 && present.Count(x => x) == 1);
-            _rowIsDiff.Add(isDiff);
 
             var borders = new Border[3];
             for (var p = 0; p < 3; p++)
             {
-                var cell = BuildCell(row, p, active[p], present[p], diffByPane[p], i, isDiff);
+                var cell = BuildCell(item.Row, p, active[p], item.Present[p], item.DiffByPane[p], i, item.IsDiff);
                 Grid.SetRow(cell, i);
                 Grid.SetColumn(cell, p * 2);
                 CompareGrid.Children.Add(cell);
                 borders[p] = cell;
             }
 
-            // gutters
-            for (var g = 0; g < 2; g++)
-            {
-                var gutter = new Border { Background = Theme.Get("GutterBg") };
-                Grid.SetRow(gutter, i);
-                Grid.SetColumn(gutter, g * 2 + 1);
-                CompareGrid.Children.Add(gutter);
-            }
-
             _rowBorders.Add(borders);
         }
 
-        var diffsCount = _rowIsDiff.Count(x => x);
-        PrevDiffButton.IsEnabled = diffsCount > 0;
-        NextDiffButton.IsEnabled = diffsCount > 0;
+        for (var g = 0; g < 2; g++)
+        {
+            var divider = new Border { Background = gutter };
+            Grid.SetRow(divider, 0);
+            Grid.SetRowSpan(divider, rows.Count);
+            Grid.SetColumn(divider, g * 2 + 1);
+            CompareGrid.Children.Add(divider);
+        }
+
+        _rows = aligned;
+        PrevDiffButton.IsEnabled = model.DiffCount > 0;
+        NextDiffButton.IsEnabled = model.DiffCount > 0;
+        CompareGrid.Visibility = Visibility.Visible;
         if (!AnyBusy())
             SetIdleStatusText();
     }
@@ -1122,6 +1124,8 @@ public partial class MainWindow : Window
         _temp = null;
         Array.Clear(_parsed);
         _tracks = Array.Empty<SubtitleTrackInfo>();
+        _compareModel = null;
+        _compareGeneration++;
         _rows = Array.Empty<AlignedRow>();
         _rowBorders.Clear();
         _rowIsDiff.Clear();
