@@ -3,21 +3,28 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Microsoft.Win32;
+using SubtitleCompare.Core.Ui;
 
 namespace SubtitleCompare.App;
 
 /// <summary>
-/// Follows Windows AppsUseLightTheme and keeps brushes + the DWM caption in sync.
+/// Follows Windows AppsUseLightTheme unless the user has saved a Light/Dark
+/// override in <c>%LOCALAPPDATA%\SubtitleCompare\theme.txt</c>. Keeps brushes
+/// and the DWM caption in sync.
 /// </summary>
 internal static class Theme
 {
     public static bool IsAppsLight { get; private set; } = true;
 
+    public static bool HasOverride { get; private set; }
+
     public static event EventHandler? Changed;
 
     public static void Initialize()
     {
-        Apply(ReadAppsUseLightTheme());
+        var saved = ThemePreference.Load();
+        HasOverride = saved is not null;
+        Apply(ThemePreference.Resolve(saved, ReadAppsUseLightTheme()));
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
     }
@@ -27,8 +34,19 @@ internal static class Theme
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
     }
 
+    public static void Toggle()
+    {
+        var next = ThemePreference.Toggle(IsAppsLight);
+        HasOverride = true;
+        ThemePreference.Save(next);
+        Apply(next);
+        Changed?.Invoke(null, EventArgs.Empty);
+    }
+
     private static void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
     {
+        if (HasOverride)
+            return;
         if (e.Category is not (UserPreferenceCategory.General or UserPreferenceCategory.Color or UserPreferenceCategory.VisualStyle))
             return;
 
@@ -39,7 +57,7 @@ internal static class Theme
 
         app.Dispatcher.Invoke(() =>
         {
-            if (light == IsAppsLight)
+            if (HasOverride || light == IsAppsLight)
                 return;
             Apply(light);
             Changed?.Invoke(null, EventArgs.Empty);
@@ -68,89 +86,13 @@ internal static class Theme
     {
         IsAppsLight = light;
         var r = Application.Current.Resources;
-        void Set(string key, string hex) => r[key] = Frozen(hex);
-
-        if (light)
+        foreach (var (key, hex) in ThemePalette.For(light))
+            r[key] = Frozen(hex);
+        OverrideSystem(r, light);
+        if (Application.Current is { } app)
         {
-            Set("AppBg", "#F4F5F7");
-            Set("PanelBg", "#FFFFFF");
-            Set("ChromeBg", "#ECEFF3");
-            Set("StatusBg", "#EEF1F5");
-            Set("BorderBrush", "#D0D4DC");
-            Set("MutedFg", "#5C6570");
-            Set("EqualFg", "#1A1A1A");
-            Set("TimestampFg", "#5A6570");
-            Set("RowBg", "#FFFFFF");
-            Set("AltRowBg", "#F4F5F7");
-            Set("GutterBg", "#E4E7EC");
-            Set("EmptyBg", "#FAFBFC");
-            Set("EmptyFg", "#2C3340");
-            Set("EmptyDash", "#9AA3B2");
-            Set("OverlayBg", "#F4F5F7");
-            Set("UniqueBg", "#C8E6C9");
-            Set("ChangedBg", "#FFF3B0");
-            Set("MissingBg", "#F4EEEF");
-            Set("MissingFg", "#6E4348");
-            Set("MissingAccent", "#B56B73");
-            Set("SelectedBg", "#BBDEFB");
-            Set("SelectedBorder", "#64B5F6");
-            Set("DiffAccent", "#C9A227");
-            Set("ErrorFg", "#B71C1C");
-            Set("BannerBg", "#FFF3CD");
-            Set("BannerFg", "#5C4A00");
-            Set("BannerBorder", "#E0C36A");
-            Set("ButtonBg", "#FFFFFF");
-            Set("ButtonBorder", "#C5CAD3");
-            Set("ButtonFg", "#1A1A1A");
-            Set("ComboBg", "#FFFFFF");
-            Set("ComboFg", "#1A1A1A");
-            Set("ButtonHover", "#E8EBF0");
-            Set("ComboHover", "#E8EBF0");
-            Set("ScrollTrack", "#E8EBF0");
-            Set("ScrollThumb", "#B0B6C0");
-            Set("ScrollThumbHover", "#8B93A0");
-            OverrideSystem(r, light: true);
-        }
-        else
-        {
-            Set("AppBg", "#1B1D21");
-            Set("PanelBg", "#25272C");
-            Set("ChromeBg", "#22242A");
-            Set("StatusBg", "#22242A");
-            Set("BorderBrush", "#3C4048");
-            Set("MutedFg", "#A8B0BA");
-            Set("EqualFg", "#E8EAED");
-            Set("TimestampFg", "#9AA3B0");
-            Set("RowBg", "#25272C");
-            Set("AltRowBg", "#1F2126");
-            Set("GutterBg", "#181A1E");
-            Set("EmptyBg", "#25272C");
-            Set("EmptyFg", "#E8EAED");
-            Set("EmptyDash", "#6B7280");
-            Set("OverlayBg", "#1F2126");
-            Set("UniqueBg", "#1F4A32");
-            Set("ChangedBg", "#4A3F1A");
-            Set("MissingBg", "#2A2224");
-            Set("MissingFg", "#E4C4C8");
-            Set("MissingAccent", "#C98A90");
-            Set("SelectedBg", "#1E3A5F");
-            Set("SelectedBorder", "#64B5F6");
-            Set("DiffAccent", "#C9A227");
-            Set("ErrorFg", "#F28B82");
-            Set("BannerBg", "#3D3420");
-            Set("BannerFg", "#F5E6A8");
-            Set("BannerBorder", "#8A7340");
-            Set("ButtonBg", "#2C2F36");
-            Set("ButtonBorder", "#4A4E58");
-            Set("ButtonFg", "#E8EAED");
-            Set("ComboBg", "#2C2F36");
-            Set("ComboFg", "#E8EAED");
-            Set("ButtonHover", "#3A3E48");
-            Set("ComboHover", "#3A3E48");
-            Set("ScrollTrack", "#1A1C20");
-            Set("ScrollThumb", "#5A616C");
-            Set("ScrollThumbHover", "#7A8290");
-            OverrideSystem(r, light: false);
+            foreach (Window window in app.Windows)
+                ApplyCaption(window);
         }
     }
 
