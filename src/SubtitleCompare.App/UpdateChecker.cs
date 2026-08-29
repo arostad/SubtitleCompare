@@ -17,6 +17,8 @@ internal sealed class UpdateInfo
 
 internal static class UpdateChecker
 {
+    private const string WorkerVersionUrl =
+        "https://subtitlecompare-update-pings.andy-s-account-376.workers.dev/version.txt";
     private const string VersionUrl =
         "https://github.com/arostad/SubtitleCompare/releases/download/latest/version.txt";
     private const string ExeUrl =
@@ -30,6 +32,7 @@ internal static class UpdateChecker
 
     private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
     {
+        "subtitlecompare-update-pings.andy-s-account-376.workers.dev",
         "github.com",
         "objects.githubusercontent.com",
         "release-assets.githubusercontent.com",
@@ -212,36 +215,53 @@ internal static class UpdateChecker
 
     public static UpdateInfo Check()
     {
-        try
+        if (TryReadVersion(WorkerVersionUrl, out var remoteText, out var remote, out _)
+            || TryReadVersion(VersionUrl, out remoteText, out remote, out var error))
         {
-            using var response = GetTrusted(VersionUrl);
-            response.EnsureSuccessStatusCode();
-            var remoteText = response.Content.ReadAsStringAsync().GetAwaiter().GetResult()?.Trim();
-            if (string.IsNullOrWhiteSpace(remoteText))
-            {
-                return new UpdateInfo
-                {
-                    RemoteVersion = "",
-                    IsNewer = false,
-                    Error = "Could not read the latest version from GitHub.",
-                };
-            }
-
-            var firstLine = remoteText.Split('\n', '\r')[0].Trim();
-            if (!Version.TryParse(firstLine, out var remote))
-            {
-                return new UpdateInfo { RemoteVersion = firstLine, IsNewer = false, Error = "Latest version string was not readable." };
-            }
-
             return new UpdateInfo
             {
-                RemoteVersion = firstLine,
+                RemoteVersion = remoteText,
                 IsNewer = remote > AppVersion.Parsed,
             };
         }
+
+        return new UpdateInfo { RemoteVersion = remoteText, IsNewer = false, Error = error };
+    }
+
+    private static bool TryReadVersion(
+        string url,
+        out string remoteText,
+        out Version remote,
+        out string error)
+    {
+        remoteText = "";
+        remote = new Version();
+        error = "";
+        try
+        {
+            using var response = GetTrusted(url);
+            response.EnsureSuccessStatusCode();
+            var body = response.Content.ReadAsStringAsync().GetAwaiter().GetResult()?.Trim();
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                error = "Could not read the latest version.";
+                return false;
+            }
+
+            remoteText = body.Split('\n', '\r')[0].Trim();
+            if (!Version.TryParse(remoteText, out var parsed))
+            {
+                error = "Latest version string was not readable.";
+                return false;
+            }
+
+            remote = parsed;
+            return true;
+        }
         catch (Exception ex)
         {
-            return new UpdateInfo { RemoteVersion = "", IsNewer = false, Error = ex.Message };
+            error = ex.Message;
+            return false;
         }
     }
 
