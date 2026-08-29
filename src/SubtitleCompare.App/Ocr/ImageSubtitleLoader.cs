@@ -4,6 +4,7 @@ using SubtitleCompare.Core.Ffmpeg;
 using SubtitleCompare.Core.Models;
 using SubtitleCompare.Core.Ocr;
 using SubtitleCompare.Core.Pgs;
+using SubtitleCompare.Core.Ui;
 
 namespace SubtitleCompare.App.Ocr;
 
@@ -33,11 +34,11 @@ internal sealed class ImageSubtitleLoader
         if (_cache.TryGetValue(key, out var cached))
             return cached;
 
-        status.Report(Busy("Extracting image subtitles…"));
+        status.Report(Busy(LoadSteps.PullingTrack));
         var sup = _extractor.ExtractRaw(filePath, track.Index);
         cancellationToken.ThrowIfCancellationRequested();
 
-        status.Report(Busy("Parsing PGS…"));
+        status.Report(Busy(LoadSteps.ParsingPgs));
         var presentations = PgsParser.ParseFile(sup);
         if (presentations.Count == 0)
         {
@@ -54,7 +55,7 @@ internal sealed class ImageSubtitleLoader
             .GetAwaiter().GetResult();
         cancellationToken.ThrowIfCancellationRequested();
 
-        status.Report(Busy("Starting OCR…"));
+        status.Report(Busy(LoadSteps.StartingOcr));
         using var engine = TesseractOcrEngine.Create(TessdataStore.DataPrefix, language);
         var parsed = OcrCueBuilder.Build(
             presentations,

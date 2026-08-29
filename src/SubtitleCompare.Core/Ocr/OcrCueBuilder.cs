@@ -61,18 +61,15 @@ public static class OcrCueBuilder
     }
 
     /// <summary>
-    /// Fixed-width OCR line so digit growth does not reflow the status bar.
-    /// Example: <c>OCR  12 of 400 (  3%)</c>.
+    /// Cue count on the overlay and status bar. Example: <c>OCR 120 / 800</c>.
     /// </summary>
     public static string Format(int current, int total)
     {
         if (total <= 0)
             return "OCR…";
-        var pct = (int)Math.Round(100.0 * current / total);
-        var width = total.ToString(CultureInfo.InvariantCulture).Length;
-        var cur = current.ToString(CultureInfo.InvariantCulture).PadLeft(width);
-        var pctText = pct.ToString(CultureInfo.InvariantCulture).PadLeft(3);
-        return $"OCR {cur} of {total} ({pctText}%)";
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"OCR {current} / {total}");
     }
 
     public static string Normalize(string? text)
