@@ -20,7 +20,7 @@
                    HorizontalAlignment="Center"
                    Foreground="{DynamicResource EqualFg}"/>
         <TextBlock x:Name="VersionText"
-                   Text="Version 1.1.24"
+                   Text="Version 1.1.25"
                    FontSize="13"
                    HorizontalAlignment="Center"
                    Margin="0,6,0,0"

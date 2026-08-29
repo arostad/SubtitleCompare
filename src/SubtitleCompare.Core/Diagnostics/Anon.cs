@@ -29,10 +29,10 @@ public static class Anon
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>
-    /// <c>not set</c>, or <c>set</c> plus an anonymized value — for env vars in debug reports.
+    /// Reports only whether an environment variable is set, never its value.
     /// </summary>
     public static string EnvVar(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? "not set" : "set  " + Text(value);
+        string.IsNullOrWhiteSpace(value) ? "not set" : "set";
 
     public static string Text(string? value)
     {

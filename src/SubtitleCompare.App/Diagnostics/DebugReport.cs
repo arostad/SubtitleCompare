@@ -46,7 +46,7 @@ internal static class DebugReport
         }
         catch (Exception ex)
         {
-            sb.AppendLine($"available: no ({Anon.Text(ex.GetType().Name + ": " + ex.Message)})");
+            sb.AppendLine($"available: no ({ex.GetType().Name})");
             sb.AppendLine();
             return;
         }
@@ -110,17 +110,17 @@ internal static class DebugReport
             }
 
             sb.AppendLine($"{label} exists: yes");
-            foreach (var path in Directory.EnumerateFiles(directory, pattern, SearchOption.AllDirectories)
-                         .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+            var index = 0;
+            foreach (var path in Directory.EnumerateFiles(directory, pattern, SearchOption.AllDirectories))
             {
-                var name = Anon.Text(Path.GetFileName(path));
+                index++;
                 var size = new FileInfo(path).Length;
-                sb.AppendLine($"{name}  {size} bytes");
+                sb.AppendLine($"file {index}: {size} bytes");
             }
         }
         catch (Exception ex)
         {
-            sb.AppendLine(Anon.Text($"{label} list failed: {ex.GetType().Name}: {ex.Message}"));
+            sb.AppendLine($"{label} list failed: {ex.GetType().Name}");
         }
     }
 

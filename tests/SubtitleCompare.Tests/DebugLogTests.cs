@@ -35,7 +35,20 @@ public class DebugLogTests : IDisposable
         var line = Assert.Single(DebugLog.Snapshot());
         Assert.Contains("InvalidOperationException", line);
         Assert.Contains("FileNotFoundException", line);
-        Assert.Contains("eng.traineddata", line);
+        Assert.DoesNotContain("eng.traineddata", line);
+    }
+
+    [Fact]
+    public void Error_does_not_export_titles_or_subtitle_text_from_exception_messages()
+    {
+        var exception = new InvalidDataException(
+            "Track title: Family Movie | invalid cue: My private subtitle sentence");
+        DebugLog.Error("pane load failed", exception);
+
+        var line = Assert.Single(DebugLog.Snapshot());
+        Assert.Contains("InvalidDataException", line);
+        Assert.DoesNotContain("Family Movie", line);
+        Assert.DoesNotContain("private subtitle", line);
     }
 
     [Fact]
