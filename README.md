@@ -12,10 +12,10 @@ GitHub Actions builds the Windows exe on each push. The latest build is on the [
 - **Word-level diffs.** Shared wording stays plain. Changed words are highlighted, wording unique to one track is marked, and a missing cue shows a muted “no cue” row instead of a loud empty hole.
 - **Jump differences.** Previous / Next difference buttons, plus `F7` / `F8`.
 - **Synced scrolling.** All three columns move together.
-- **SDH hints.** A quiet line under the dropdown when a track looks like SDH:
+- **SDH.** If a track looks like SDH, a small note shows up under its dropdown:
   - hearing-impaired flag and/or an SDH-style title (`SDH subtitle track (from track title & flag)`, or title-only / flag-only)
   - otherwise a text scan for a lot of `[brackets]`, `(parentheses)`, or music notes (`Potential SDH subtitle track detected`)
-- **Forced hints.** The same title / flag / both wording for forced tracks (`Forced subtitle track (from track flag)`, and so on). A track can show both SDH and forced.
+- **Forced.** Same idea for forced tracks (`Forced subtitle track (from track flag)`, and so on). A track can be both SDH and forced.
 - **Light and dark.** Sun/moon button next to About toggles Light/Dark, overrides the OS, and persists in `%LOCALAPPDATA%\SubtitleCompare\theme.txt`. First run follows Windows until you click.
 - **In-app updates.** On launch (and from About → Check for updates) the app offers to download the new exe and restart.
 - **Image-track OCR.** PGS (Blu-ray) tracks are OCR'd on device with Tesseract and then compared like any text track. The first time a language is used, the app downloads that trained data into `%LOCALAPPDATA%\SubtitleCompare\tessdata`. Results can be imperfect, especially with stylized or outlined fonts. VobSub and DVB are still image-only.
