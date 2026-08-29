@@ -5,21 +5,21 @@ namespace SubtitleCompare.Tests;
 public class PickTrackHintSizeTests
 {
     [Fact]
-    public void Uses_22_percent_of_the_column_when_in_range()
+    public void Uses_12_percent_of_the_column_when_in_range()
     {
-        Assert.Equal(44, PickTrackHintSize.ArrowWidth(200));
+        Assert.Equal(48, PickTrackHintSize.ArrowWidth(400));
     }
 
     [Fact]
-    public void Floors_at_36_when_the_column_is_narrow()
+    public void Floors_at_28_when_the_column_is_narrow()
     {
-        Assert.Equal(36, PickTrackHintSize.ArrowWidth(100));
+        Assert.Equal(28, PickTrackHintSize.ArrowWidth(100));
     }
 
     [Fact]
-    public void Caps_at_96_when_the_column_is_wide()
+    public void Caps_at_52_when_the_column_is_wide()
     {
-        Assert.Equal(96, PickTrackHintSize.ArrowWidth(500));
+        Assert.Equal(52, PickTrackHintSize.ArrowWidth(500));
     }
 
     [Theory]
@@ -29,6 +29,6 @@ public class PickTrackHintSizeTests
     [InlineData(double.PositiveInfinity)]
     public void Falls_back_to_min_when_width_is_unusable(double columnWidth)
     {
-        Assert.Equal(36, PickTrackHintSize.ArrowWidth(columnWidth));
+        Assert.Equal(28, PickTrackHintSize.ArrowWidth(columnWidth));
     }
 }
