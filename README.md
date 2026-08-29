@@ -5,7 +5,6 @@
 <br><br>
 
 Windows app for comparing subtitle tracks inside an MKV (or similar container).<br>
-
 Drop a file on the window, pick up to three tracks, and compare them side by side.
 
 <br clear="all">
