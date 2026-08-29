@@ -62,11 +62,11 @@ public static class TextDiffer
 
         var ai = 0;
         var bi = 0;
-        foreach (var (ax, bx) in lcs.Append((aWords.Count, bWords.Count)))
+        var last = (aWords.Count, bWords.Count);
+        for (var p = 0; p <= lcs.Count; p++)
         {
-            var aGap = aWords.Skip(ai).Take(ax - ai).ToList();
-            var bGap = bWords.Skip(bi).Take(bx - bi).ToList();
-            ClassifyGap(a, kindsA, aGap, b, kindsB, bGap);
+            var (ax, bx) = p < lcs.Count ? lcs[p] : last;
+            ClassifyGap(a, kindsA, aWords, ai, ax - ai, b, kindsB, bWords, bi, bx - bi);
             if (ax < aWords.Count && bx < bWords.Count)
             {
                 kindsA[aWords[ax]] = DiffKind.Equal;
@@ -100,12 +100,14 @@ public static class TextDiffer
         var ai = 0;
         var bi = 0;
         var ci = 0;
-        foreach (var (ax, bx, cx) in lcs.Append((aWords.Count, bWords.Count, cWords.Count)))
+        var last = (aWords.Count, bWords.Count, cWords.Count);
+        for (var p = 0; p <= lcs.Count; p++)
         {
-            var aGap = aWords.Skip(ai).Take(ax - ai).ToList();
-            var bGap = bWords.Skip(bi).Take(bx - bi).ToList();
-            var cGap = cWords.Skip(ci).Take(cx - ci).ToList();
-            ClassifyGap3(a, kindsA, aGap, b, kindsB, bGap, c, kindsC, cGap);
+            var (ax, bx, cx) = p < lcs.Count ? lcs[p] : last;
+            ClassifyGap3(
+                a, kindsA, aWords, ai, ax - ai,
+                b, kindsB, bWords, bi, bx - bi,
+                c, kindsC, cWords, ci, cx - ci);
             if (ax < aWords.Count)
             {
                 kindsA[aWords[ax]] = DiffKind.Equal;
@@ -137,67 +139,67 @@ public static class TextDiffer
     }
 
     private static void ClassifyGap(
-        List<Token> a, DiffKind[] kindsA, List<int> aGap,
-        List<Token> b, DiffKind[] kindsB, List<int> bGap)
+        List<Token> a, DiffKind[] kindsA, List<int> aWords, int aFrom, int aCount,
+        List<Token> b, DiffKind[] kindsB, List<int> bWords, int bFrom, int bCount)
     {
-        var n = Math.Min(aGap.Count, bGap.Count);
+        var n = Math.Min(aCount, bCount);
         for (var i = 0; i < n; i++)
         {
-            var same = a[aGap[i]].Key == b[bGap[i]].Key;
+            var same = a[aWords[aFrom + i]].Key == b[bWords[bFrom + i]].Key;
             var kind = same ? DiffKind.Equal : DiffKind.Changed;
-            kindsA[aGap[i]] = kind;
-            kindsB[bGap[i]] = kind;
+            kindsA[aWords[aFrom + i]] = kind;
+            kindsB[bWords[bFrom + i]] = kind;
         }
-        for (var i = n; i < aGap.Count; i++)
-            kindsA[aGap[i]] = DiffKind.Unique;
-        for (var i = n; i < bGap.Count; i++)
-            kindsB[bGap[i]] = DiffKind.Unique;
+        for (var i = n; i < aCount; i++)
+            kindsA[aWords[aFrom + i]] = DiffKind.Unique;
+        for (var i = n; i < bCount; i++)
+            kindsB[bWords[bFrom + i]] = DiffKind.Unique;
     }
 
     private static void ClassifyGap3(
-        List<Token> a, DiffKind[] kindsA, List<int> aGap,
-        List<Token> b, DiffKind[] kindsB, List<int> bGap,
-        List<Token> c, DiffKind[] kindsC, List<int> cGap)
+        List<Token> a, DiffKind[] kindsA, List<int> aWords, int aFrom, int aCount,
+        List<Token> b, DiffKind[] kindsB, List<int> bWords, int bFrom, int bCount,
+        List<Token> c, DiffKind[] kindsC, List<int> cWords, int cFrom, int cCount)
     {
-        var present = (aGap.Count > 0 ? 1 : 0) + (bGap.Count > 0 ? 1 : 0) + (cGap.Count > 0 ? 1 : 0);
+        var present = (aCount > 0 ? 1 : 0) + (bCount > 0 ? 1 : 0) + (cCount > 0 ? 1 : 0);
         if (present <= 1)
         {
-            foreach (var i in aGap) kindsA[i] = DiffKind.Unique;
-            foreach (var i in bGap) kindsB[i] = DiffKind.Unique;
-            foreach (var i in cGap) kindsC[i] = DiffKind.Unique;
+            for (var i = 0; i < aCount; i++) kindsA[aWords[aFrom + i]] = DiffKind.Unique;
+            for (var i = 0; i < bCount; i++) kindsB[bWords[bFrom + i]] = DiffKind.Unique;
+            for (var i = 0; i < cCount; i++) kindsC[cWords[cFrom + i]] = DiffKind.Unique;
             return;
         }
 
-        if (aGap.Count > 0 && bGap.Count > 0 && cGap.Count == 0)
+        if (aCount > 0 && bCount > 0 && cCount == 0)
         {
-            ClassifyGap(a, kindsA, aGap, b, kindsB, bGap);
+            ClassifyGap(a, kindsA, aWords, aFrom, aCount, b, kindsB, bWords, bFrom, bCount);
             return;
         }
-        if (aGap.Count > 0 && cGap.Count > 0 && bGap.Count == 0)
+        if (aCount > 0 && cCount > 0 && bCount == 0)
         {
-            ClassifyGap(a, kindsA, aGap, c, kindsC, cGap);
+            ClassifyGap(a, kindsA, aWords, aFrom, aCount, c, kindsC, cWords, cFrom, cCount);
             return;
         }
-        if (bGap.Count > 0 && cGap.Count > 0 && aGap.Count == 0)
+        if (bCount > 0 && cCount > 0 && aCount == 0)
         {
-            ClassifyGap(b, kindsB, bGap, c, kindsC, cGap);
+            ClassifyGap(b, kindsB, bWords, bFrom, bCount, c, kindsC, cWords, cFrom, cCount);
             return;
         }
 
-        var n = Math.Min(aGap.Count, Math.Min(bGap.Count, cGap.Count));
+        var n = Math.Min(aCount, Math.Min(bCount, cCount));
         for (var i = 0; i < n; i++)
         {
-            var ka = a[aGap[i]].Key;
-            var kb = b[bGap[i]].Key;
-            var kc = c[cGap[i]].Key;
+            var ka = a[aWords[aFrom + i]].Key;
+            var kb = b[bWords[bFrom + i]].Key;
+            var kc = c[cWords[cFrom + i]].Key;
             var kind = (ka == kb && kb == kc) ? DiffKind.Equal : DiffKind.Changed;
-            kindsA[aGap[i]] = kind;
-            kindsB[bGap[i]] = kind;
-            kindsC[cGap[i]] = kind;
+            kindsA[aWords[aFrom + i]] = kind;
+            kindsB[bWords[bFrom + i]] = kind;
+            kindsC[cWords[cFrom + i]] = kind;
         }
-        for (var i = n; i < aGap.Count; i++) kindsA[aGap[i]] = DiffKind.Unique;
-        for (var i = n; i < bGap.Count; i++) kindsB[bGap[i]] = DiffKind.Unique;
-        for (var i = n; i < cGap.Count; i++) kindsC[cGap[i]] = DiffKind.Unique;
+        for (var i = n; i < aCount; i++) kindsA[aWords[aFrom + i]] = DiffKind.Unique;
+        for (var i = n; i < bCount; i++) kindsB[bWords[bFrom + i]] = DiffKind.Unique;
+        for (var i = n; i < cCount; i++) kindsC[cWords[cFrom + i]] = DiffKind.Unique;
     }
 
     private static List<(int A, int B)> Lcs(List<Token> a, List<int> aWords, List<Token> b, List<int> bWords)
@@ -286,6 +288,28 @@ public static class TextDiffer
     private static bool KeysEqual(Token x, Token y) =>
         string.Equals(x.Key, y.Key, StringComparison.Ordinal);
 
+    private static string ConcatDisplay(List<Token> tokens, int start, int end)
+    {
+        var len = 0;
+        for (var i = start; i < end; i++)
+            len += tokens[i].Display.Length;
+        if (len == 0)
+            return "";
+        if (start + 1 == end)
+            return tokens[start].Display;
+
+        return string.Create(len, (tokens, start, end), static (span, state) =>
+        {
+            var at = 0;
+            for (var i = state.start; i < state.end; i++)
+            {
+                var s = state.tokens[i].Display;
+                s.AsSpan().CopyTo(span[at..]);
+                at += s.Length;
+            }
+        });
+    }
+
     private static IReadOnlyList<DiffSegment> Materialize(List<Token> tokens, DiffKind[] kinds)
     {
         if (tokens.Count == 0)
@@ -306,7 +330,7 @@ public static class TextDiffer
                 i++;
             }
 
-            var text = string.Concat(tokens.Skip(start).Take(i - start).Select(t => t.Display));
+            var text = ConcatDisplay(tokens, start, i);
             if (text.Length > 0)
                 list.Add(new DiffSegment(text, kind));
         }

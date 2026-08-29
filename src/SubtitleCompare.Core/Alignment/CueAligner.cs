@@ -22,10 +22,13 @@ public static class CueAligner
         };
 
         var used = new bool[3][];
+        var order = new int[3][];
+        var cursor = new int[3];
         var seeds = new List<(int Pane, int CueIndex, SubtitleCue Cue)>();
         for (var p = 0; p < 3; p++)
         {
             used[p] = new bool[tracks[p].Count];
+            order[p] = SortedIndexes(tracks[p]);
             for (var i = 0; i < tracks[p].Count; i++)
                 seeds.Add((p, i, tracks[p][i]));
         }
@@ -54,27 +57,12 @@ public static class CueAligner
                 if (other == seed.Pane || tracks[other].Count == 0)
                     continue;
 
-                var bestIdx = -1;
-                var bestDist = TimeSpan.MaxValue;
-                for (var i = 0; i < tracks[other].Count; i++)
-                {
-                    if (used[other][i])
-                        continue;
-                    var cand = tracks[other][i];
-                    if (!seed.Cue.Overlaps(cand))
-                        continue;
-
-                    var dist = (cand.Start - seed.Cue.Start).Duration();
-                    if (bestIdx < 0
-                        || dist < bestDist
-                        || (dist == bestDist && cand.Start < tracks[other][bestIdx].Start)
-                        || (dist == bestDist && cand.Start == tracks[other][bestIdx].Start && i < bestIdx))
-                    {
-                        bestIdx = i;
-                        bestDist = dist;
-                    }
-                }
-
+                var bestIdx = FindBestOverlap(
+                    seed.Cue,
+                    tracks[other],
+                    used[other],
+                    order[other],
+                    ref cursor[other]);
                 if (bestIdx >= 0)
                 {
                     assigned[other] = tracks[other][bestIdx];
@@ -92,6 +80,67 @@ public static class CueAligner
             return c != 0 ? c : x.AssignedCount.CompareTo(y.AssignedCount);
         });
         return rows;
+    }
+
+    /// <summary>
+    /// Seeds are visited in start order, so a per-track cursor can skip
+    /// cues that already ended. The remaining scan stops at the first
+    /// cue that starts after the seed.
+    /// </summary>
+    private static int FindBestOverlap(
+        SubtitleCue seed,
+        IReadOnlyList<SubtitleCue> track,
+        bool[] used,
+        int[] order,
+        ref int cursor)
+    {
+        while (cursor < order.Length)
+        {
+            var i = order[cursor];
+            if (used[i] || track[i].End <= seed.Start)
+                cursor++;
+            else
+                break;
+        }
+
+        var bestIdx = -1;
+        var bestDist = TimeSpan.MaxValue;
+        for (var k = cursor; k < order.Length; k++)
+        {
+            var i = order[k];
+            var cand = track[i];
+            if (cand.Start >= seed.End)
+                break;
+            if (used[i] || cand.End <= seed.Start)
+                continue;
+
+            var dist = (cand.Start - seed.Start).Duration();
+            if (bestIdx < 0
+                || dist < bestDist
+                || (dist == bestDist && cand.Start < track[bestIdx].Start)
+                || (dist == bestDist && cand.Start == track[bestIdx].Start && i < bestIdx))
+            {
+                bestIdx = i;
+                bestDist = dist;
+            }
+        }
+
+        return bestIdx;
+    }
+
+    private static int[] SortedIndexes(IReadOnlyList<SubtitleCue> track)
+    {
+        var idx = new int[track.Count];
+        for (var i = 0; i < idx.Length; i++)
+            idx[i] = i;
+        Array.Sort(idx, (a, b) =>
+        {
+            var c = track[a].Start.CompareTo(track[b].Start);
+            if (c != 0) return c;
+            c = track[a].End.CompareTo(track[b].End);
+            return c != 0 ? c : a.CompareTo(b);
+        });
+        return idx;
     }
 
     private static TimeSpan EarliestStart(SubtitleCue?[] assigned)

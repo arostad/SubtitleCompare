@@ -729,15 +729,16 @@ public partial class MainWindow : Window
                 borders[p] = cell;
             }
 
-            for (var g = 0; g < 2; g++)
-            {
-                var divider = new Border { Background = gutter };
-                Grid.SetRow(divider, i);
-                Grid.SetColumn(divider, g * 2 + 1);
-                CompareGrid.Children.Add(divider);
-            }
-
             _rowBorders.Add(borders);
+        }
+
+        for (var g = 0; g < 2; g++)
+        {
+            var divider = new Border { Background = gutter };
+            Grid.SetRow(divider, 0);
+            Grid.SetRowSpan(divider, rows.Count);
+            Grid.SetColumn(divider, g * 2 + 1);
+            CompareGrid.Children.Add(divider);
         }
 
         _rows = aligned;

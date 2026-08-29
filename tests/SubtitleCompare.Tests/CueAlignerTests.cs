@@ -107,6 +107,49 @@ public class CueAlignerTests
         });
     }
 
+    [Fact]
+    public void File_order_does_not_have_to_be_time_order()
+    {
+        var a = new[]
+        {
+            Cue(1, 10.0, 12.0, "late"),
+            Cue(2, 1.0, 3.0, "early"),
+        };
+        var b = new[]
+        {
+            Cue(1, 10.2, 11.8, "late-b"),
+            Cue(2, 1.1, 2.8, "early-b"),
+        };
+
+        var rows = CueAligner.Align(a, b);
+        var early = rows.Single(r => r.CueA?.Text == "early");
+        Assert.Equal("early-b", early.CueB!.Text);
+        var late = rows.Single(r => r.CueA?.Text == "late");
+        Assert.Equal("late-b", late.CueB!.Text);
+    }
+
+    [Fact]
+    public void Many_cues_still_pair_closest_starts()
+    {
+        const int n = 400;
+        var a = new SubtitleCue[n];
+        var b = new SubtitleCue[n];
+        for (var i = 0; i < n; i++)
+        {
+            a[i] = Cue(i + 1, i * 2.0, i * 2.0 + 1.5, $"a{i}");
+            b[i] = Cue(i + 1, i * 2.0 + 0.2, i * 2.0 + 1.4, $"b{i}");
+        }
+
+        var rows = CueAligner.Align(a, b);
+        Assert.Equal(n, rows.Count);
+        Assert.All(rows, r =>
+        {
+            Assert.NotNull(r.CueA);
+            Assert.NotNull(r.CueB);
+            Assert.Equal(r.CueA!.Text[1..], r.CueB!.Text[1..]);
+        });
+    }
+
     private static SubtitleCue Cue(int index, double startSec, double endSec, string text) =>
         new()
         {

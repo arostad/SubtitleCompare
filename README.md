@@ -51,7 +51,7 @@ irm https://raw.githubusercontent.com/arostad/SubtitleCompare/main/scripts/Insta
 powershell -NoProfile -ExecutionPolicy Bypass -File $env:TEMP\Install-SubtitleCompare.ps1
 ```
 
-That downloads `SubtitleCompare.exe` (about 140 MB) to `%LOCALAPPDATA%\SubtitleCompare` and creates Desktop and Start Menu shortcuts.
+That downloads `SubtitleCompare.exe` (about 160 MB) to `%LOCALAPPDATA%\SubtitleCompare` and creates Desktop and Start Menu shortcuts.
 
 Or grab `SubtitleCompare.exe` from the [Latest release](https://github.com/arostad/SubtitleCompare/releases/tag/latest) yourself.
 
