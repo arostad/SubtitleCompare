@@ -10,6 +10,7 @@ GitHub Actions builds the Windows exe on each push. The latest build is on the [
 - **Drop or Open.** Accepts `.mkv`, `.mka`, `.mks`, `.mp4`, and `.m4v`. `Ctrl+O` opens a file picker.
 - **Timestamp alignment.** Cues are lined up by overlapping start/end times, not by cue number, so tracks that split lines differently still sit on the same row.
 - **Word-level diffs.** Shared wording stays plain. Changed words are highlighted, wording unique to one track is marked, and a missing cue shows a muted “no cue” row instead of a loud empty hole.
+- **Key.** Button next to About. Opens a little legend for those compare colors — same, changed, only here, and the muted no-cue row.
 - **Jump differences.** Previous / Next difference buttons, plus `F7` / `F8`.
 - **Synced scrolling.** All three columns move together.
 - **SDH.** If a track looks like SDH, a small note shows up under its dropdown:

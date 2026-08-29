@@ -147,6 +147,12 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void OnKeyClick(object sender, RoutedEventArgs e)
+    {
+        var key = new KeyWindow { Owner = this };
+        key.ShowDialog();
+    }
+
     private void OnAboutClick(object sender, RoutedEventArgs e)
     {
         var about = new AboutWindow { Owner = this };

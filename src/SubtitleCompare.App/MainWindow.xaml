@@ -79,6 +79,8 @@
                     </Grid>
                 </Button>
                 <Button x:Name="AboutButton" Content="About" Click="OnAboutClick" DockPanel.Dock="Right" Margin="8,0,8,0"/>
+                <Button x:Name="KeyButton" Content="Key" Click="OnKeyClick" DockPanel.Dock="Right"
+                        Margin="0" ToolTip="How differences are shown."/>
                 <TextBlock Margin="16,0,8,0"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource MutedFg}"
