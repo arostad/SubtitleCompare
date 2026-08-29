@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
+using SubtitleCompare.App.Ocr;
 using SubtitleCompare.Core.Analysis;
 using SubtitleCompare.Core.Alignment;
 using SubtitleCompare.Core.Diff;
@@ -25,6 +26,7 @@ public partial class MainWindow : Window
 
     private TempSession? _temp;
     private FfmpegExtract? _extractor;
+    private ImageSubtitleLoader? _ocr;
     private FfmpegProbe _probe = new();
     private string? _currentFile;
     private IReadOnlyList<SubtitleTrackInfo> _tracks = Array.Empty<SubtitleTrackInfo>();
@@ -35,6 +37,7 @@ public partial class MainWindow : Window
     private int _selectedRow = -1;
     private int _loadGeneration;
     private int _refreshGeneration;
+    private CancellationTokenSource? _refreshCts;
     private bool _suppressSlotEvents;
 
     public MainWindow()
@@ -198,6 +201,7 @@ public partial class MainWindow : Window
         ResetSession();
         _temp = new TempSession();
         _extractor = new FfmpegExtract(_temp.Root);
+        _ocr = new ImageSubtitleLoader(_extractor);
         _currentFile = path;
 
         EmptyState.Visibility = Visibility.Collapsed;
@@ -315,11 +319,14 @@ public partial class MainWindow : Window
         if (_currentFile is null || _extractor is null)
             return;
 
+        _refreshCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _refreshCts = cts;
         var refresh = ++_refreshGeneration;
         StatusError.Text = "";
         var tasks = new List<Task>();
         for (var pane = 0; pane < 3; pane++)
-            tasks.Add(LoadPaneAsync(pane, gen, refresh));
+            tasks.Add(LoadPaneAsync(pane, gen, refresh, cts.Token));
 
         await Task.WhenAll(tasks);
         if (gen != _loadGeneration || refresh != _refreshGeneration) return;
@@ -327,7 +334,7 @@ public partial class MainWindow : Window
         RebuildCompare();
     }
 
-    private async Task LoadPaneAsync(int pane, int gen, int refresh)
+    private async Task LoadPaneAsync(int pane, int gen, int refresh, CancellationToken cancellationToken)
     {
         var choice = _slots[pane].SelectedItem as TrackChoice;
         if (refresh == _refreshGeneration)
@@ -341,7 +348,13 @@ public partial class MainWindow : Window
 
         if (choice.IsImage)
         {
-            SetOverlay(pane, "Image subtitles (PGS/VobSub) can't be compared as text.");
+            if (choice.Track?.IsPgs != true)
+            {
+                SetOverlay(pane, "This image subtitle format can't be OCR'd yet (PGS is supported).");
+                return;
+            }
+
+            await LoadImagePaneAsync(pane, gen, refresh, choice, cancellationToken).ConfigureAwait(true);
             return;
         }
 
@@ -385,6 +398,78 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task LoadImagePaneAsync(
+        int pane,
+        int gen,
+        int refresh,
+        TrackChoice choice,
+        CancellationToken cancellationToken)
+    {
+        var file = _currentFile!;
+        var track = choice.Track!;
+        var loader = _ocr;
+        if (loader is null)
+        {
+            SetOverlay(pane, "OCR is not available in this session.");
+            return;
+        }
+
+        SetOverlay(pane, "Starting OCR…");
+        Dispatcher.Invoke(() => StatusExtract.Text = "Starting OCR…");
+
+        var progress = new Progress<string>(msg =>
+        {
+            if (gen != _loadGeneration || refresh != _refreshGeneration)
+                return;
+            SetOverlay(pane, msg);
+            StatusExtract.Text = msg;
+        });
+
+        try
+        {
+            var parsed = await Task.Run(
+                    () => loader.Load(file, track, progress, cancellationToken),
+                    cancellationToken)
+                .ConfigureAwait(true);
+            if (gen != _loadGeneration || refresh != _refreshGeneration)
+                return;
+
+            _parsed[pane] = parsed;
+            if (parsed.Cues.Count == 0)
+                SetOverlay(pane, "This track has no cues.");
+            else if (parsed.Cues.All(c => string.IsNullOrWhiteSpace(c.Text)))
+                SetOverlay(pane, "OCR produced no readable text.");
+            else
+                SetOverlay(pane, null);
+            Dispatcher.Invoke(() => StatusExtract.Text = "Ready");
+        }
+        catch (OperationCanceledException)
+        {
+            // Stale work after the user changed tracks or opened another file.
+        }
+        catch (FfmpegNotFoundException ex)
+        {
+            if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            SetBanner(ex.Message);
+            SetOverlay(pane, ex.Message);
+            Dispatcher.Invoke(() =>
+            {
+                StatusExtract.Text = "ffmpeg not found";
+                StatusError.Text = ex.Message;
+            });
+        }
+        catch (Exception ex)
+        {
+            if (gen != _loadGeneration || refresh != _refreshGeneration) return;
+            SetOverlay(pane, ex.Message);
+            Dispatcher.Invoke(() =>
+            {
+                StatusExtract.Text = "OCR failed";
+                StatusError.Text = ex.Message;
+            });
+        }
+    }
+
     private void ClearTrackHints()
     {
         foreach (var hint in _hints)
@@ -413,7 +498,10 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            var lines = SdhDetector.Describe(choice.Track, _parsed[pane]?.Cues);
+            var lines = new List<string>();
+            if (choice.IsImage && _parsed[pane] is not null)
+                lines.Add("OCR from image subtitle");
+            lines.AddRange(SdhDetector.Describe(choice.Track, _parsed[pane]?.Cues));
             if (lines.Count == 0)
             {
                 hint.Text = "";
@@ -671,8 +759,7 @@ public partial class MainWindow : Window
 
     private bool IsMissingCell(int row, int pane)
     {
-        var choice = _slots[pane].SelectedItem as TrackChoice;
-        if (choice is null || choice.IsNone || choice.IsImage)
+        if (_parsed[pane] is null)
             return false;
         return _rows[row][pane] is null;
     }
@@ -759,6 +846,8 @@ public partial class MainWindow : Window
 
     private void ResetSession()
     {
+        _refreshCts?.Cancel();
+        _ocr = null;
         _extractor = null;
         _temp?.Dispose();
         _temp = null;

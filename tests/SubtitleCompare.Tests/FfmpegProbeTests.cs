@@ -48,6 +48,19 @@ public class FfmpegProbeTests
         Assert.Equal("jpn", tracks[1].Language);
         Assert.True(tracks[1].IsForced);
         Assert.True(tracks[1].IsImageBased);
+        Assert.False(tracks[0].IsPgs);
+        Assert.True(tracks[1].IsPgs);
+    }
+
+    [Fact]
+    public void Text_in_pgs_codec_is_not_ocrable_pgs()
+    {
+        var json = """
+            {"streams":[{"index":4,"codec_name":"hdmv_text_subtitle","codec_type":"subtitle"}]}
+            """;
+        var tracks = FfmpegProbe.ParseJson(json);
+        Assert.True(tracks[0].IsImageBased);
+        Assert.False(tracks[0].IsPgs);
     }
 
     [Fact]

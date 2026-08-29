@@ -18,4 +18,19 @@ public sealed class SubtitleTrackInfo
     public bool IsImageBased { get; init; }
 
     public bool IsTextBased => !IsImageBased;
+
+    /// <summary>
+    /// True for Blu-ray PGS streams that can be OCR'd from a raw <c>.sup</c> extract.
+    /// </summary>
+    public bool IsPgs
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(CodecName))
+                return false;
+            if (CodecName.Contains("text", StringComparison.OrdinalIgnoreCase))
+                return false;
+            return CodecName.Contains("pgs", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 }
