@@ -9,11 +9,24 @@ $ExePath = Join-Path $InstallDir "SubtitleCompare.exe"
 Write-Host "Installing Subtitle Compare..."
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
+$PendingPath = Join-Path $InstallDir "SubtitleCompare.exe.new"
 Write-Host "Downloading SubtitleCompare.exe from the Latest release..."
-Invoke-WebRequest -Uri $Url -OutFile $ExePath -UseBasicParsing
+Invoke-WebRequest -Uri $Url -OutFile $PendingPath -UseBasicParsing
+
+if (-not (Test-Path $PendingPath) -or (Get-Item $PendingPath).Length -lt 1MB) {
+    throw "Download failed. SubtitleCompare.exe is missing or too small: $PendingPath"
+}
+
+try {
+    Move-Item -LiteralPath $PendingPath -Destination $ExePath -Force
+} catch {
+    Get-Process -Name SubtitleCompare -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 1
+    Move-Item -LiteralPath $PendingPath -Destination $ExePath -Force
+}
 
 if (-not (Test-Path $ExePath) -or (Get-Item $ExePath).Length -lt 1MB) {
-    throw "Download failed. SubtitleCompare.exe is missing or too small in $InstallDir"
+    throw "Install failed. SubtitleCompare.exe is missing or too small in $InstallDir"
 }
 
 $Wsh = New-Object -ComObject WScript.Shell
