@@ -43,7 +43,7 @@ public class TextDifferTests
     {
         var panes = TextDiffer.Compare(
             "\"> I want them dead.",
-            "\"> (WHISPERING) I want them dead.");
+            "\">(WHISPERING) I want them dead.");
 
         Assert.DoesNotContain(panes.SelectMany(p => p), s => s.Kind == DiffKind.Changed);
         Assert.Contains(panes[0], s => s.Text.Contains("\">") && s.Kind == DiffKind.Equal);
