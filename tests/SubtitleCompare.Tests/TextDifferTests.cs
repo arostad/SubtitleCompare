@@ -39,6 +39,21 @@ public class TextDifferTests
     }
 
     [Fact]
+    public void Parenthetical_sdh_tag_is_one_insertion_after_shared_punctuation()
+    {
+        var panes = TextDiffer.Compare(
+            "\"> I want them dead.",
+            "\">(WHISPERING) I want them dead.");
+
+        Assert.DoesNotContain(panes.SelectMany(p => p), s => s.Kind == DiffKind.Changed);
+        Assert.Contains(panes[0], s => s.Text.Contains("\">") && s.Kind == DiffKind.Equal);
+        Assert.Contains(panes[1], s => s.Text.Contains("\">") && s.Kind == DiffKind.Equal);
+        Assert.Equal(
+            "(WHISPERING)",
+            string.Concat(panes[1].Where(s => s.Kind == DiffKind.Unique).Select(s => s.Text)));
+    }
+
+    [Fact]
     public void Compare_is_case_insensitive_but_preserves_display()
     {
         var panes = TextDiffer.Compare("Hello World", "hello world");

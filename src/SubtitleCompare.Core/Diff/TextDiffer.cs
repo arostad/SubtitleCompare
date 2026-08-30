@@ -12,7 +12,7 @@ namespace SubtitleCompare.Core.Diff;
 public static class TextDiffer
 {
     private static readonly Regex Tokenizer = new(
-        @"\s+|[\p{L}\p{N}]+|[^\s\p{L}\p{N}]+",
+        @"\([^()\r\n]*\)|\s+|[\p{L}\p{N}]+|[^\s\p{L}\p{N}()]+|[()]",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public static IReadOnlyList<IReadOnlyList<DiffSegment>> Compare(params string?[] texts)
