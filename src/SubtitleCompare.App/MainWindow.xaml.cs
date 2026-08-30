@@ -722,7 +722,14 @@ public partial class MainWindow : Window
             var borders = new Border[3];
             for (var p = 0; p < 3; p++)
             {
-                var cell = BuildCell(item.Row, p, active[p], item.Present[p], item.DiffByPane[p], i, item.IsDiff);
+                var cell = BuildCell(
+                    item.Row,
+                    p,
+                    active[p],
+                    item.Present[p],
+                    item.DiffByPane[p],
+                    i,
+                    item.DiffFrameByPane[p]);
                 Grid.SetRow(cell, i);
                 Grid.SetColumn(cell, p * 2);
                 CompareGrid.Children.Add(cell);
@@ -756,15 +763,15 @@ public partial class MainWindow : Window
         bool present,
         IReadOnlyList<DiffSegment>? segments,
         int rowIndex,
-        bool isDiff)
+        bool showDiffFrame)
     {
         var bg = rowIndex % 2 == 0 ? Theme.Get("RowBg") : Theme.Get("AltRowBg");
         var border = new Border
         {
             Background = bg,
             Padding = new Thickness(10, 7, 10, 8),
-            BorderBrush = isDiff ? Theme.Get("DiffAccent") : Theme.Get("GutterBg"),
-            BorderThickness = isDiff ? new Thickness(3, 0, 0, 1) : new Thickness(0, 0, 0, 1),
+            BorderBrush = showDiffFrame ? Theme.Get("DiffAccent") : Theme.Get("GutterBg"),
+            BorderThickness = showDiffFrame ? new Thickness(3, 0, 0, 1) : new Thickness(0, 0, 0, 1),
             MinHeight = 36,
             Cursor = Cursors.Hand,
             Tag = rowIndex,
@@ -773,6 +780,7 @@ public partial class MainWindow : Window
         if (!active)
         {
             border.Background = Theme.Get("GutterBg");
+            border.Cursor = Cursors.Arrow;
             return border;
         }
 
@@ -865,6 +873,14 @@ public partial class MainWindow : Window
             var wasDiff = _rowIsDiff[_selectedRow];
             for (var p = 0; p < 3; p++)
             {
+                if (_compareModel?.Active[p] != true)
+                {
+                    previous[p].Background = Theme.Get("GutterBg");
+                    previous[p].BorderBrush = Theme.Get("GutterBg");
+                    previous[p].BorderThickness = new Thickness(0, 0, 0, 1);
+                    continue;
+                }
+
                 var wasMissing = IsMissingCell(_selectedRow, p);
                 previous[p].Background = wasMissing ? Theme.Get("MissingBg") : prevBg;
                 previous[p].BorderBrush = wasDiff ? Theme.Get("DiffAccent") : Theme.Get("GutterBg");
@@ -873,8 +889,12 @@ public partial class MainWindow : Window
         }
 
         _selectedRow = index;
-        foreach (var cell in _rowBorders[index])
+        for (var p = 0; p < 3; p++)
         {
+            if (_compareModel?.Active[p] != true)
+                continue;
+
+            var cell = _rowBorders[index][p];
             cell.Background = Theme.Get("SelectedBg");
             cell.BorderBrush = Theme.Get("SelectedBorder");
             cell.BorderThickness = new Thickness(0, 0, 0, 2);

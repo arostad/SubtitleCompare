@@ -37,6 +37,22 @@ public class CompareGridBuilderTests
     }
 
     [Fact]
+    public void Inactive_third_pane_never_gets_a_diff_frame()
+    {
+        var a = Track("Original line");
+        var b = Track("Changed line");
+
+        var model = CompareGridBuilder.Build([a, b, null]);
+
+        var row = Assert.Single(model.Rows);
+        Assert.True(row.IsDiff);
+        Assert.True(row.DiffFrameByPane[0]);
+        Assert.True(row.DiffFrameByPane[1]);
+        Assert.False(row.DiffFrameByPane[2]);
+        Assert.Null(row.DiffByPane[2]);
+    }
+
+    [Fact]
     public void One_active_pane_has_no_diffs()
     {
         var a = new ParsedSubtitles
@@ -86,4 +102,20 @@ public class CompareGridBuilderTests
         Assert.True(model.Rows[0].IsDiff);
         Assert.Equal(1, model.DiffCount);
     }
+
+    private static ParsedSubtitles Track(string text) => new()
+    {
+        Format = "srt",
+        Cues =
+        [
+            new SubtitleCue
+            {
+                Index = 1,
+                Start = TimeSpan.FromSeconds(1),
+                End = TimeSpan.FromSeconds(2),
+                Text = text,
+                RawText = text,
+            },
+        ],
+    };
 }

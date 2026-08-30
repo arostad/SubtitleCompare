@@ -13,6 +13,7 @@ public sealed class CompareRowModel
     public required AlignedRow Row { get; init; }
     public required bool IsDiff { get; init; }
     public required bool[] Present { get; init; }
+    public required bool[] DiffFrameByPane { get; init; }
     public required IReadOnlyList<DiffSegment>?[] DiffByPane { get; init; }
 }
 
@@ -114,11 +115,16 @@ public static class CompareGridBuilder
             if (isDiff)
                 diffsCount++;
 
+            var diffFrameByPane = new bool[3];
+            for (var p = 0; p < 3; p++)
+                diffFrameByPane[p] = active[p] && isDiff;
+
             models[i] = new CompareRowModel
             {
                 Row = row,
                 IsDiff = isDiff,
                 Present = present,
+                DiffFrameByPane = diffFrameByPane,
                 DiffByPane = diffByPane,
             };
         }
