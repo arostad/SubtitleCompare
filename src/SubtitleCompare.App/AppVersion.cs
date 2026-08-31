@@ -20,7 +20,7 @@ internal static class AppVersion
             }
 
             var v = Assembly.GetExecutingAssembly().GetName().Version;
-            return v is null ? "1.1.27" : $"{v.Major}.{v.Minor}.{v.Build:00}";
+            return v is null ? "1.1.28" : $"{v.Major}.{v.Minor}.{v.Build:00}";
         }
     }
 

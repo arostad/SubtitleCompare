@@ -11,10 +11,10 @@
     <LangVersion>latest</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <Version>1.1.27</Version>
-    <InformationalVersion>1.1.27</InformationalVersion>
-    <AssemblyVersion>1.1.27.0</AssemblyVersion>
-    <FileVersion>1.1.27.0</FileVersion>
+    <Version>1.1.28</Version>
+    <InformationalVersion>1.1.28</InformationalVersion>
+    <AssemblyVersion>1.1.28.0</AssemblyVersion>
+    <FileVersion>1.1.28.0</FileVersion>
     <Authors>Andy Rostad</Authors>
     <Company>Andy Rostad</Company>
     <Copyright>Copyright © 2026 Andy Rostad. MIT License.</Copyright>
