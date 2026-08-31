@@ -1,4 +1,4 @@
-<h3>Subtitle Compare</h3>
+<h1>Subtitle Compare</h1>
 
 <table>
 <tr>
