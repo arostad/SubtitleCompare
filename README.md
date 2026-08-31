@@ -1,8 +1,8 @@
-# Subtitle Compare
+<h1>Subtitle Compare</h1>
 
 <table>
 <tr>
-<td valign="middle">
+<td width="180" valign="middle">
 <img src="src/SubtitleCompare.App/Assets/app.png" width="180" alt="Subtitle Compare">
 </td>
 <td valign="middle">
