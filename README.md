@@ -27,7 +27,7 @@ Drop a file on the window, pick up to three tracks, and compare them side by sid
 - **Image-track OCR.** PGS (Blu-ray) tracks are OCR'd on device with Tesseract (a few cues at a time, so a long track does not sit on one core) and then compared like any text track. The first time a language is used, the app downloads that trained data into `%LOCALAPPDATA%\SubtitleCompare\tessdata`. Results can be imperfect, especially with stylized or outlined fonts. VobSub and DVB are still image-only.
 - **Busy status.** Changing one track leaves the other columns alone, and the grid updates as soon as a pane lands. While a column is busy, the overlay and the bottom bar say what it is doing (pulling a track, reading an SRT, parsing PGS, downloading OCR data, OCR 120 / 800) and name the busy panes A/B/C, plus a combined percent when those columns have real totals. Idle stays the short row/diff count.
 
-Vibe coded by [Andy Rostad](https://github.com/arostad). Released under the [MIT License](LICENSE).
+App carefully directed by [Andy Rostad](https://github.com/arostad). Released under the [MIT License](LICENSE).
 
 ## Requirements
 

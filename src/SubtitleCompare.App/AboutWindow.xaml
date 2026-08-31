@@ -20,7 +20,7 @@
                    HorizontalAlignment="Center"
                    Foreground="{DynamicResource EqualFg}"/>
         <TextBlock x:Name="VersionText"
-                   Text="Version 1.1.27"
+                   Text="Version 1.1.28"
                    FontSize="13"
                    HorizontalAlignment="Center"
                    Margin="0,6,0,0"
@@ -32,6 +32,26 @@
                    HorizontalAlignment="Center"
                    Margin="8,14,8,0"
                    Foreground="{DynamicResource MutedFg}"/>
+        <TextBlock HorizontalAlignment="Center" Margin="0,18,0,0" FontSize="13"
+                   Foreground="{DynamicResource MutedFg}">
+            <Run Text="App carefully directed by "/>
+            <Hyperlink NavigateUri="https://github.com/arostad"
+                       RequestNavigate="OnNavigate"
+                       Foreground="#4C8DFF">Andy Rostad</Hyperlink>
+        </TextBlock>
+        <TextBlock HorizontalAlignment="Center" Margin="0,8,0,0" FontSize="12"
+                   Foreground="{DynamicResource MutedFg}">
+            <Hyperlink NavigateUri="https://github.com/arostad/SubtitleCompare"
+                       RequestNavigate="OnNavigate"
+                       Foreground="#4C8DFF">Source</Hyperlink>
+        </TextBlock>
+        <TextBlock HorizontalAlignment="Center" Margin="0,8,0,0" FontSize="12"
+                   Foreground="{DynamicResource MutedFg}">
+            <Run Text="Released under the "/>
+            <Hyperlink NavigateUri="https://github.com/arostad/SubtitleCompare/blob/main/LICENSE"
+                       RequestNavigate="OnNavigate"
+                       Foreground="#4C8DFF">MIT License</Hyperlink>
+        </TextBlock>
         <Button x:Name="CheckUpdatesButton" Content="Check for updates"
                 Margin="0,18,0,0" HorizontalAlignment="Center"
                 Click="OnCheckUpdatesClick"/>
@@ -53,19 +73,5 @@
                    HorizontalAlignment="Center"
                    Margin="0,8,0,0"
                    Foreground="{DynamicResource MutedFg}"/>
-        <TextBlock HorizontalAlignment="Center" Margin="0,18,0,0" FontSize="13"
-                   Foreground="{DynamicResource MutedFg}">
-            <Run Text="Vibe coded by "/>
-            <Hyperlink NavigateUri="https://github.com/arostad"
-                       RequestNavigate="OnNavigate"
-                       Foreground="#4C8DFF">Andy Rostad</Hyperlink>
-        </TextBlock>
-        <TextBlock HorizontalAlignment="Center" Margin="0,8,0,0" FontSize="12"
-                   Foreground="{DynamicResource MutedFg}">
-            <Run Text="Released under the "/>
-            <Hyperlink NavigateUri="https://github.com/arostad/SubtitleCompare/blob/main/LICENSE"
-                       RequestNavigate="OnNavigate"
-                       Foreground="#4C8DFF">MIT License</Hyperlink>
-        </TextBlock>
     </StackPanel>
 </Window>
