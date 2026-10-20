@@ -18,7 +18,7 @@ internal sealed class UpdateInfo
 internal static class UpdateChecker
 {
     private const string WorkerVersionUrl =
-        "https://subtitlecompare-update-pings.andy-s-account-376.workers.dev/version.txt";
+        "https://subtitlecompare-update-pings.dataspike.workers.dev/version.txt";
     private const string VersionUrl =
         "https://github.com/arostad/SubtitleCompare/releases/download/latest/version.txt";
     private const string ExeUrl =
@@ -32,7 +32,7 @@ internal static class UpdateChecker
 
     private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
     {
-        "subtitlecompare-update-pings.andy-s-account-376.workers.dev",
+        "subtitlecompare-update-pings.dataspike.workers.dev",
         "github.com",
         "objects.githubusercontent.com",
         "release-assets.githubusercontent.com",
