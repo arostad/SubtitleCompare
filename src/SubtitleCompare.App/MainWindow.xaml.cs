@@ -69,7 +69,11 @@ public partial class MainWindow : Window
             _ = LoadFileAsync(args[1]);
     }
 
-    private void OnSourceInitialized(object? sender, EventArgs e) => Theme.ApplyCaption(this);
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        Theme.ApplyCaption(this);
+        MaximizedFrameHook.Attach(this);
+    }
 
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
