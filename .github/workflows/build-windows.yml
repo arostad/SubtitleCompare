@@ -18,6 +18,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Sibling of `build` / `release` (no `needs`). A stale dialog link fails this
+  # job and the workflow, but does not block publishing the Latest exe. Retry
+  # of transient network errors lives in the script.
+  check-ffmpeg-refs:
+    name: Check FFmpeg links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check FFmpeg dialog URLs and winget packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/check-ffmpeg-refs.py
+
   build:
     runs-on: windows-latest
     steps:
