@@ -13,14 +13,15 @@ on:
 permissions:
   contents: read
 
+# Cancel superseded runs on PR branches only. Main pushes always finish.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Sibling of `build` / `release` (no `needs`). A stale dialog link fails this
-  # job and the workflow, but does not block publishing the Latest exe. Retry
-  # of transient network errors lives in the script.
+  # Sibling of `build` / `test` / `release` (no `needs`). A stale dialog link
+  # fails this job and the workflow, but does not block publishing. Retry of
+  # transient network errors lives in the script.
   check-ffmpeg-refs:
     name: Check FFmpeg links
     runs-on: ubuntu-latest
@@ -32,7 +33,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/check-ffmpeg-refs.py
 
-  build:
+  # Full test suite. Blocking: release needs it. Fails on any failed, skipped,
+  # or not-run test, and if no tests ran at all.
+  test:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -40,6 +43,60 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: "10.0.x"
+
+      - name: dotnet test
+        run: >
+          dotnet test tests/SubtitleCompare.Tests/SubtitleCompare.Tests.csproj
+          -c Release
+          -p:TreatWarningsAsErrors=true
+          --logger "trx;LogFileName=results.trx"
+          --results-directory TestResults
+
+      - name: Require every test to pass (none skipped)
+        shell: pwsh
+        run: |
+          [xml]$trx = Get-Content TestResults/results.trx
+          $c = $trx.TestRun.ResultSummary.Counters
+          "total=$($c.total) passed=$($c.passed) failed=$($c.failed) notExecuted=$($c.notExecuted)"
+          if ([int]$c.total -lt 1) { throw "No tests ran." }
+          if ([int]$c.passed -ne [int]$c.total) { throw "Only $($c.passed) of $($c.total) tests passed." }
+
+  build:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      release: ${{ steps.plan.outputs.release }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # Release only when the csproj version differs from the version.txt on the
+      # rolling `latest` release. CI-only and README changes never republish.
+      # A new version must be higher, and its v-tag must not exist yet.
+      - name: Plan release
+        id: plan
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = (Select-Xml -Path src/SubtitleCompare.App/SubtitleCompare.App.csproj -XPath "//Version").Node.InnerText.Trim()
+          $published = (gh release download latest -R $env:GITHUB_REPOSITORY -p version.txt -O - | Out-String).Trim()
+          if (-not $published) { throw "Could not read version.txt from the latest release." }
+          $release = 'false'
+          if ($v -ne $published) {
+            if ([version]$v -le [version]$published) { throw "csproj version $v is not higher than published $published." }
+            gh release view "v$v" -R $env:GITHUB_REPOSITORY *> $null
+            if ($LASTEXITCODE -eq 0) { throw "Release v$v already exists. Bump the version." }
+            $release = 'true'
+          }
+          $global:LASTEXITCODE = 0
+          "csproj=$v published=$published release=$release"
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "release=$release" >> $env:GITHUB_OUTPUT
 
       - name: Publish self-contained exe
         run: >
@@ -49,13 +106,12 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:TreatWarningsAsErrors=true
           -o ./publish
 
       - name: Write version.txt
         shell: pwsh
-        run: |
-          $v = (Select-Xml -Path src/SubtitleCompare.App/SubtitleCompare.App.csproj -XPath "//Version").Node.InnerText
-          Set-Content -Path publish/version.txt -Value $v.Trim() -NoNewline
+        run: Set-Content -Path publish/version.txt -Value "${{ steps.plan.outputs.version }}" -NoNewline
 
       - name: Write SHA-256 checksum
         shell: pwsh
@@ -64,7 +120,10 @@ jobs:
           Set-Content -Path publish/SubtitleCompare.exe.sha256 -Value "$hash  SubtitleCompare.exe" -NoNewline
           Copy-Item -Path scripts/Install-SubtitleCompare.ps1 -Destination publish/Install-SubtitleCompare.ps1
 
+      # Hand-off to the release job only. Deleted by the release job.
       - name: Upload artifact
+        id: upload
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.plan.outputs.release == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: SubtitleCompare
@@ -76,11 +135,15 @@ jobs:
             publish/version.txt
 
   release:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.release == 'true'
+    needs: [build, test]
     runs-on: windows-latest
     permissions:
       contents: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - name: Download build artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -88,18 +151,30 @@ jobs:
           name: SubtitleCompare
           path: ./release
 
-      - name: Update Latest release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
-        with:
-          tag_name: latest
-          name: Latest
-          body: |
-            Self-contained Windows build of Subtitle Compare.
-            Download `SubtitleCompare.exe` and keep ffmpeg on PATH.
-            This file is replaced on every push to main.
-          files: |
-            release/SubtitleCompare.exe
-            release/SubtitleCompare.exe.sha256
-            release/Install-SubtitleCompare.ps1
-            release/version.txt
-          make_latest: true
+      # Immutable versioned release. `gh release create` fails if the tag exists.
+      - name: Create versioned release
+        shell: pwsh
+        run: |
+          gh release create "v$env:VERSION" -R $env:GITHUB_REPOSITORY `
+            --target $env:GITHUB_SHA --latest=false `
+            --title "Subtitle Compare $env:VERSION" `
+            --notes "Self-contained Windows build of Subtitle Compare $env:VERSION. Download ``SubtitleCompare.exe`` and keep ffmpeg on PATH." `
+            release/SubtitleCompare.exe release/SubtitleCompare.exe.sha256 release/Install-SubtitleCompare.ps1 release/version.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Rolling pointer used by the in-app updater and README download link.
+      # version.txt goes last so no client sees the new version before its exe.
+      - name: Point Latest release at this version
+        shell: pwsh
+        run: |
+          foreach ($f in 'SubtitleCompare.exe', 'SubtitleCompare.exe.sha256', 'Install-SubtitleCompare.ps1', 'version.txt') {
+            gh release upload latest "release/$f" --clobber -R $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release edit latest -R $env:GITHUB_REPOSITORY --title "Latest" `
+            --notes "Self-contained Windows build of Subtitle Compare (currently v$env:VERSION). Download ``SubtitleCompare.exe`` and keep ffmpeg on PATH. Always the newest version; every version also has its own v-tag release."
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Delete build artifact
+        shell: pwsh
+        run: gh api -X DELETE "repos/$env:GITHUB_REPOSITORY/actions/artifacts/${{ needs.build.outputs.artifact-id }}"
